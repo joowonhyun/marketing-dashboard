@@ -195,8 +195,9 @@ Prisma 7 changed how the client is generated and configured (verified against `~
 
 ```prisma
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -248,6 +249,8 @@ model DailyStat {
 }
 ```
 
+`moduleFormat = "cjs"` matters even though it's absent from `nest-core`'s schema: without it, the generated client ships ESM `import`/`export` syntax, and running it under Nest's CommonJS build throws `ReferenceError: exports is not defined in ES module scope` the moment anything touches `PrismaClient`. If you hit that error, this is why — set `moduleFormat = "cjs"`, delete `server/generated` and `server/dist`, then re-run `npx prisma generate`.
+
 - [ ] **Step 4: Run the migration**
 
 Run inside `server/`: `npx prisma migrate dev --name init`
@@ -268,59 +271,23 @@ git commit -m "feat: add Prisma schema and initial migration"
 
 ---
 
-### Task 4: PrismaService + health check (TDD)
+### Task 4: PrismaService + health check
 
 **Files:**
 - Create: `server/src/prisma/prisma.service.ts`
 - Create: `server/src/prisma/prisma.module.ts`
 - Create: `server/src/health/health.controller.ts`
-- Create: `server/test/health.e2e-spec.ts`
 - Modify: `server/src/app.module.ts`
+- Modify: `server/src/main.ts` (load `.env` before anything else boots)
+- Modify: `server/test/jest-e2e.json`, `server/package.json` (Jest/Prisma 7 compatibility — see Step 6)
 
 **Interfaces:**
-- Consumes: `@prisma/client`'s generated `PrismaClient` (from Task 3's migration).
+- Consumes: the generated `PrismaClient` at `server/generated/prisma/client` (Task 3).
 - Produces: `PrismaService` (injectable, `server/src/prisma/prisma.service.ts`), importable via `PrismaModule` — Plan 2's `AuthModule` and Plan 3's `CampaignsModule`/`DailyStatsModule` will inject this same `PrismaService` into their own services.
 
-- [ ] **Step 1: Write the failing e2e test first**
+> **Decision:** TDD was scoped down for this task after review — `/health` is a thin, logic-free endpoint (query DB, return a static object), so it was implemented directly and verified with `curl` instead of writing `server/test/health.e2e-spec.ts` first. TDD resumes at Task 5, which has real logic (a pure function) worth driving with tests. If you want the e2e test anyway, it's the same shape as the default `test/app.e2e-spec.ts` Nest generated in Task 2, just hitting `GET /health` and asserting `{ status: 'ok' }`.
 
-`server/test/health.e2e-spec.ts`:
-```ts
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from './../src/app.module';
-
-describe('HealthController (e2e)', () => {
-  let app: INestApplication;
-
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-  });
-
-  afterEach(async () => {
-    await app.close();
-  });
-
-  it('/health (GET) returns ok and proves DB connectivity', () => {
-    return request(app.getHttpServer())
-      .get('/health')
-      .expect(200)
-      .expect({ status: 'ok' });
-  });
-});
-```
-
-- [ ] **Step 2: Run it to verify it fails**
-
-Run: `cd server && pnpm run test:e2e`
-Expected: FAIL — `Cannot GET /health` (404), because the controller doesn't exist yet.
-
-- [ ] **Step 3: Write `PrismaService`**
+- [ ] **Step 1: Write `PrismaService`**
 
 Prisma 7 needs a driver adapter passed into the client constructor (confirmed against `~/Documents/GitHub/nest-core`'s working `PrismaService`, which does the same thing with `PrismaMariaDb` for its MySQL adapter — ours uses `PrismaPg` for Postgres). The generated client itself lives at `server/generated/prisma` (created by `prisma migrate`/`prisma generate` in the next steps, not committed to git), so the import path is relative, not `@prisma/client`.
 
@@ -347,7 +314,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 }
 ```
 
-- [ ] **Step 4: Write `PrismaModule` (global, so every future feature module can inject `PrismaService` without re-importing it)**
+- [ ] **Step 2: Write `PrismaModule` (global, so every future feature module can inject `PrismaService` without re-importing it)**
 
 `server/src/prisma/prisma.module.ts`:
 ```ts
@@ -362,7 +329,7 @@ import { PrismaService } from './prisma.service';
 export class PrismaModule {}
 ```
 
-- [ ] **Step 5: Write the health controller**
+- [ ] **Step 3: Write the health controller**
 
 `server/src/health/health.controller.ts`:
 ```ts
@@ -381,7 +348,7 @@ export class HealthController {
 }
 ```
 
-- [ ] **Step 6: Wire both modules into `AppModule`**
+- [ ] **Step 4: Wire both modules into `AppModule`**
 
 `server/src/app.module.ts` — add the imports and controller:
 ```ts
@@ -399,18 +366,73 @@ import { HealthController } from './health/health.controller';
 export class AppModule {}
 ```
 
-- [ ] **Step 7: Install supertest types if missing, then run the e2e test again**
+- [ ] **Step 5: Load `.env` in `main.ts`**
 
-Run: `pnpm add -D @types/supertest` (skip if already present in the Nest-generated `package.json`)
-Run: `pnpm run test:e2e`
-Expected: PASS — `/health (GET) returns ok and proves DB connectivity`.
+`prisma.config.ts` loads `.env` for the Prisma CLI (`prisma migrate`, `prisma generate`), but `nest start` boots `main.ts` directly and never touches `prisma.config.ts` — so without this, `PrismaService`'s constructor reads `process.env.DATABASE_URL` as `undefined` and Postgres auth fails with a confusing `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string` error. Add the import as the very first line of `server/src/main.ts`:
+```ts
+import 'dotenv/config';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  await app.listen(process.env.PORT ?? 3001);
+}
+bootstrap();
+```
+
+- [ ] **Step 6: Verify manually with curl**
+
+Run: `pnpm run start:dev`, wait for `Nest application successfully started`, then in another terminal:
+```bash
+curl -s http://localhost:3001/health
+```
+Expected: `{"status":"ok"}`.
+
+- [ ] **Step 7: Fix Jest so `pnpm test` / `pnpm run test:e2e` still pass**
+
+Adding `PrismaModule` to `AppModule` means every existing test that boots `AppModule` (the default `test/app.e2e-spec.ts` from Task 2) now transitively pulls in the generated Prisma client, which breaks Jest two different ways under Prisma 7 — neither is specific to anything we wrote, both are Prisma 7 + Jest interop gaps:
+
+1. The generated client's `.ts` files import sibling files with an explicit `.js` extension (e.g. `import * as $Class from './internal/class.js'`) — standard for TS `nodenext`/`bundler` resolution, but ts-jest's default CommonJS resolution can't find a literal `class.js` file (only `class.ts` exists) and fails with `Cannot find module './internal/class.js'`.
+2. Prisma 7's client lazily loads its WASM query compiler via a dynamic `import()`, which Jest refuses to run without the `--experimental-vm-modules` Node flag, failing with `A dynamic import callback was invoked without --experimental-vm-modules`.
+
+Fix 1 — add a `moduleNameMapper` that strips `.js` off relative imports before Jest resolves them, in **both** Jest configs:
+
+`server/test/jest-e2e.json`:
+```json
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^(\\.{1,2}/.*)\\.js$": "$1"
+  }
+}
+```
+
+`server/package.json`'s `"jest"` block — add the same `moduleNameMapper` key alongside the existing `testEnvironment: "node"` line.
+
+Fix 2 — prefix the test scripts in `server/package.json` with the Node flag:
+```json
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:cov": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json"
+```
+
+Run: `pnpm test` and `pnpm run test:e2e`
+Expected: both still show `1 passed, 1 total` (the original Task 2 scaffold tests) — this step is about keeping the existing test suites green after `AppModule` started pulling in Prisma, not about adding new tests.
 
 - [ ] **Step 8: Commit**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
-git add server/src server/test
-git commit -m "feat: add PrismaService and /health endpoint with e2e test"
+git add server/src server/test server/package.json
+git commit -m "feat: add PrismaService and /health endpoint"
 ```
 
 ---
