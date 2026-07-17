@@ -6,19 +6,17 @@
 Next.js(App Router)와 NestJS를 BFF(Backend-for-Frontend) 패턴으로 연결하고, JWT 인증으로 대시보드 전체를 보호합니다. <br/>
 https://marketing-dashboard-xi-wine.vercel.app/
 
-![Hero Dashboard](frontend/public/docs/dashboard_dark.png)
 
 ---
 
 ## 📑 목차
 
 1.  [프로젝트 개요](#-프로젝트-개요)
-2.  [아키텍처](#-아키텍처)
-3.  [기술 스택](#-기술-스택)
-4.  [실행 방법](#-실행-방법)
-5.  [주요 기능 및 UI](#-주요-기능-및-ui)
-6.  [설계 하이라이트](#-설계-하이라이트)
-7.  [폴더 구조](#-폴더-구조)
+2.  [기술 스택](#-기술-스택)
+3.  [아키텍처](#-아키텍처)
+4.  [주요 기능 및 UI](#-주요-기능-및-ui)
+5.  [설계 하이라이트](#-설계-하이라이트)
+6.  [폴더 구조](#-폴더-구조)
 
 ---
 
@@ -34,19 +32,6 @@ https://marketing-dashboard-xi-wine.vercel.app/
 > 자유롭게 테스트해 보세요 — 매일 00:00(KST)에 원본 데이터로 자동 초기화됩니다.
 
 ---
-
-## 🏗 아키텍처
-
-```
-[Browser] --(same-origin httpOnly cookie)--> [Next.js Server] --(Authorization: Bearer JWT)--> [NestJS API] --(Prisma)--> [PostgreSQL]
-```
-
-- **브라우저는 NestJS를 직접 호출하지 않습니다.** 로그인 시 발급받은 accessToken/refreshToken을 Next.js가 httpOnly 쿠키로 저장하고, 이후 모든 API 호출은 Next.js 서버(Server Component / Server Action)가 쿠키에서 토큰을 읽어 `Authorization` 헤더로 NestJS에 전달합니다.
-- 이 구조 덕분에 JWT가 XSS로 탈취될 경로 자체가 없고, 크로스도메인 쿠키 문제나 CORS 설정도 사실상 불필요합니다.
-- `middleware.ts`가 페이지 진입마다 인증 상태를 검사하고, accessToken이 만료됐지만 refreshToken이 살아있으면 사용자가 눈치채지 못하게 자동으로 재발급합니다. Server Action(캠페인 등록/상태변경/삭제) 도중 토큰이 만료되면 그 자리에서 갱신 후 원래 요청을 재시도합니다.
-
----
-
 ## 🛠 기술 스택
 
 ### Frontend
@@ -68,6 +53,18 @@ https://marketing-dashboard-xi-wine.vercel.app/
 | **Database**   | **PostgreSQL 16** (Docker)     | 관계형 데이터(Campaign ↔ DailyStat) 무결성 보장               |
 | **Auth**       | **Passport JWT**               | accessToken/refreshToken 이중 발급, 전역 가드로 기본 보호      |
 | **Validation** | **class-validator**            | 프론트엔드 zod 스키마와 동일한 규칙을 서버에도 이중 적용        |
+
+---
+
+## 🏗 아키텍처
+
+```
+[Browser] --(same-origin httpOnly cookie)--> [Next.js Server] --(Authorization: Bearer JWT)--> [NestJS API] --(Prisma)--> [PostgreSQL]
+```
+
+- **브라우저는 NestJS를 직접 호출하지 않습니다.** 로그인 시 발급받은 accessToken/refreshToken을 Next.js가 httpOnly 쿠키로 저장하고, 이후 모든 API 호출은 Next.js 서버(Server Component / Server Action)가 쿠키에서 토큰을 읽어 `Authorization` 헤더로 NestJS에 전달합니다.
+- 이 구조 덕분에 JWT가 XSS로 탈취될 경로 자체가 없고, 크로스도메인 쿠키 문제나 CORS 설정도 사실상 불필요합니다.
+- `middleware.ts`가 페이지 진입마다 인증 상태를 검사하고, accessToken이 만료됐지만 refreshToken이 살아있으면 사용자가 눈치채지 못하게 자동으로 재발급합니다. Server Action(캠페인 등록/상태변경/삭제) 도중 토큰이 만료되면 그 자리에서 갱신 후 원래 요청을 재시도합니다.
 
 ---
 
