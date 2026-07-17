@@ -554,10 +554,16 @@ git commit -m "feat: 레이아웃에 로그아웃 버튼 추가"
 
 ## 이 계획의 완료 기준 (Definition of Done)
 
-- [ ] 로그인 안 한 상태로 `/` 접근 → `/login`으로 리다이렉트.
-- [ ] `server/.env`의 admin 계정으로 로그인 성공 → `/`로 이동, 차트/테이블에 실제 Postgres 데이터 표시.
-- [ ] 캠페인 상태 일괄 변경 / 등록 / 삭제가 실제 DB에 반영됨(Prisma Studio로 확인).
-- [ ] accessToken 쿠키를 브라우저 개발자도구에서 강제 삭제한 뒤 새로고침 → 미들웨어가 refreshToken으로 자동 갱신, 로그인 페이지로 안 튕김.
-- [ ] refreshToken까지 삭제한 뒤 새로고침 → `/login`으로 리다이렉트.
-- [ ] 로그아웃 버튼 클릭 → 쿠키 삭제, `/login`으로 이동, 이후 `/` 직접 접근 시 다시 `/login`.
-- [ ] `pnpm exec tsc --noEmit`, `pnpm lint` 통과.
+- [x] 로그인 안 한 상태로 `/` 접근 → `/login`으로 리다이렉트. (curl + 브라우저로 확인)
+- [x] `server/.env`의 admin 계정으로 로그인 성공 → `/`로 이동, 차트/테이블에 실제 Postgres 데이터 표시. (브라우저로 확인)
+- [x] 캠페인 상태 변경 / 등록이 실제 DB에 반영됨 — 브라우저에서 실행 후 `psql`로 직접 확인(Prisma Studio 대신).
+- [ ] accessToken 쿠키 강제 삭제 후 새로고침 → 미들웨어 자동 갱신 — 코드 로직상 타당하나(refreshToken 있으면 `/auth/refresh` 호출 후 쿠키 재설정), httpOnly라 브라우저 JS로 쿠키를 지울 수 없어 실제 만료 시나리오는 **미검증**. 다음 세션에서 Chrome DevTools Application 탭으로 수동 확인 필요.
+- [ ] refreshToken까지 만료된 뒤 `/login` 리다이렉트 — 위와 동일 이유로 미검증.
+- [x] 로그아웃 버튼 클릭 → 쿠키 삭제, `/login`으로 이동, 로그아웃 상태에서 `/login` 재방문 시 테마 토글도 정상 동작(다크/라이트 전환 확인).
+- [x] `npx tsc --noEmit`, `npx eslint .` 통과 — 남은 lint 에러 3개(`useCampaignForm.ts`, `chart.ts`, `ThemeToggle.tsx`)는 이 계획과 무관한 기존 이슈.
+
+**계획에 없었지만 진행 중 발견/처리한 것:**
+- 저장소를 `frontend/` + `server/` 구조로 재편(사용자 요청, `next-auth-boilerplate` 포트폴리오 반영 논의 중 결정) — `tsconfig.json`이 `app/features/shared`와 함께 이동해서 import 경로 변경 없음.
+- `/login`이 대시보드 레이아웃(로그아웃 버튼, `@charts`/`@table` 슬롯)을 물려받지 않도록 `(dashboard)` 라우트 그룹으로 분리.
+- 다크모드에서 Recharts 툴팁 hover 시 텍스트가 안 보이던 기존 버그 발견 및 수정(`CHART_CONFIG`에 다크모드 색상 추가, 3개 차트 컴포넌트에 `useTheme()` 적용).
+- 로그인 페이지에 테마 토글 버튼 추가(기존엔 대시보드에만 있었음).

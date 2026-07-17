@@ -1,16 +1,20 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { UI_DIMENSIONS } from "@/shared/constants/ui";
+
+const emptySubscribe = () => () => {};
 
 export default function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // SSR과 클라이언트의 초기 렌더가 항상 일치하도록(effect에서 setState하는 대신)
+  // useSyncExternalStore로 "마운트 여부"를 표현한다.
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
 
   if (!mounted) {
     return <div className={UI_DIMENSIONS.THEME_TOGGLE.SIZE} />; // skeleton width

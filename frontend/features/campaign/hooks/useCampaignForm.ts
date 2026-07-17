@@ -45,6 +45,9 @@ export const useCampaignForm = () => {
 
   // 입력값 변경 시 세션 스토리지에 자동 저장
   useEffect(() => {
+    // react-hook-form의 watch()는 매 렌더마다 새 함수를 반환하는 공식 구독
+    // 패턴이라 React Compiler가 메모이제이션을 못 함 — 의도된 동작이므로 억제.
+    // eslint-disable-next-line react-hooks/incompatible-library
     const { unsubscribe } = watch((values) => {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(values));
     });

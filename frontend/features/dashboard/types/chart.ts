@@ -15,7 +15,6 @@ export interface PieLabelProps {
   outerRadius?: number;
   name?: string;
   percentage?: string;
-  [key: string]: any;
 }
 
 // 대시보드 지표(Metric) 타입 정의

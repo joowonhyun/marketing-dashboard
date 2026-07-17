@@ -73,7 +73,9 @@ export default function PlatformDonutChart({
                 dataKey="value"
                 onClick={handleSliceClick}
                 cursor="pointer"
-                label={(props: PieLabelProps) => <ChartLabel {...props} />}
+                label={(props) => (
+                  <ChartLabel {...(props as PieLabelProps)} />
+                )}
                 labelLine={false}
                 isAnimationActive={false}
               />
