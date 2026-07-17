@@ -1,41 +1,41 @@
-# NestJS Campaigns/DailyStats API Implementation Plan
+# NestJS Campaigns/DailyStats API 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **에이전트 작업자용:** 이 계획을 태스크 단위로 실행할 때는 superpowers:subagent-driven-development(추천) 또는 superpowers:executing-plans 서브스킬을 사용할 것. 각 스텝은 체크박스(`- [ ]`) 문법으로 추적한다.
 >
-> **Execution mode: direct implementation, no TDD** (same as Plan 2) — implement, then verify with `curl`.
+> **실행 방식: TDD 없이 바로 구현** (Plan 2와 동일) — 구현하고 `curl`로 검증.
 
-**Goal:** `GET/POST/PATCH/DELETE /campaigns` and `GET /daily-stats`, matching the existing frontend's exact call shapes (`fetchCampaigns`, `updateCampaignStatus`, `createCampaign`, `deleteCampaign`, `fetchDailyStats`) so Plan 4 can swap their internals with zero signature changes.
+**목표:** `GET/POST/PATCH/DELETE /campaigns`와 `GET /daily-stats`를, 기존 프론트엔드의 호출 형태(`fetchCampaigns`, `updateCampaignStatus`, `createCampaign`, `deleteCampaign`, `fetchDailyStats`)와 정확히 맞춰서 만들어, Plan 4에서 시그니처 변경 없이 내부 구현만 바꿔치기할 수 있게 한다.
 
-**Architecture:** Two feature modules (`CampaignsModule`, `DailyStatsModule`), each with a thin controller + service injecting `PrismaService`. Protected by the global `JwtAuthGuard` from Plan 2 automatically — no `@Public()`, no extra guard wiring needed.
+**아키텍처:** 두 개의 기능 모듈(`CampaignsModule`, `DailyStatsModule`), 각각 `PrismaService`를 주입받는 얇은 컨트롤러+서비스로 구성. Plan 2의 전역 `JwtAuthGuard`로 자동 보호됨 — `@Public()` 필요 없고, 별도 가드 설정도 필요 없음.
 
-**Tech Stack:** Same as Plan 1/2 — Nest 11, Prisma 7, class-validator.
+**기술 스택:** Plan 1/2와 동일 — Nest 11, Prisma 7, class-validator.
 
-## Global Constraints
+## 전역 제약사항
 
-- DTO validation must match `features/campaign/schemas/campaignFormSchema.ts` / `shared/constants/campaign.ts`'s `CAMPAIGN_LIMITS` exactly: name 2–100 chars, budget 100–1,000,000,000 (integer), `endDate > startDate`.
-- **`cost` is not part of this API.** Confirmed by reading `useCampaignForm.ts:54-62`: the form validates `cost <= budget` client-side but never sends `cost` to `createCampaignAction` — it's not a `Campaign` field in `shared/types/index.ts` or `server/prisma/schema.prisma`. Don't add it.
-- `PATCH /campaigns/:id` only ever changes `status` — matches the design doc ("현재도 status PATCH만 존재하며 그대로 유지") and the existing frontend, which has no other campaign-edit UI.
-- `POST /campaigns` DTO must accept `status` too (not default it server-side): `features/campaign/services/api.ts`'s `createCampaign` sends `Omit<Campaign, "id">`, which includes `status` — the existing frontend (`useCampaignForm.ts:59`) always sends `"active"`, but the API contract shouldn't assume that.
-- Response dates: Prisma returns JS `Date` objects; the frontend expects plain `"YYYY-MM-DD"` strings (matching the old `db.json`/json-server format — see `shared/types/index.ts`'s `startDate: string | null`). Format `startDate`/`endDate`/`date` back to `YYYY-MM-DD` in the service layer before returning, don't let them serialize as full ISO datetimes.
-- Every route in this plan is protected by default (global `JwtAuthGuard` from Plan 2) — do not add `@Public()` anywhere here.
+- DTO 검증은 `features/campaign/schemas/campaignFormSchema.ts` / `shared/constants/campaign.ts`의 `CAMPAIGN_LIMITS`와 정확히 일치해야 함: 이름 2~100자, 예산 100~1,000,000,000(정수), `endDate > startDate`.
+- **`cost`는 이 API에 포함되지 않는다.** `useCampaignForm.ts:54-62`를 읽어서 확인함: 폼이 클라이언트 쪽에서 `cost <= budget`을 검증하긴 하지만 `createCampaignAction`에 `cost`를 절대 보내지 않는다 — `shared/types/index.ts`나 `server/prisma/schema.prisma`에도 `Campaign` 필드로 존재하지 않음. 추가하지 말 것.
+- `PATCH /campaigns/:id`는 오직 `status`만 바꾼다 — 설계 문서("현재도 status PATCH만 존재하며 그대로 유지")와 다른 캠페인 수정 UI가 없는 기존 프론트엔드와 일치.
+- `POST /campaigns` DTO는 `status`도 받아야 함(서버에서 기본값으로 정하지 말 것): `features/campaign/services/api.ts`의 `createCampaign`이 `Omit<Campaign, "id">`를 보내는데, 여기 `status`가 포함됨 — 기존 프론트엔드(`useCampaignForm.ts:59`)는 항상 `"active"`를 보내지만, API 계약이 그걸 전제로 하면 안 됨.
+- 응답 날짜: Prisma는 JS `Date` 객체를 반환하지만, 프론트엔드는 순수 `"YYYY-MM-DD"` 문자열을 기대함(예전 `db.json`/json-server 포맷과 일치 — `shared/types/index.ts`의 `startDate: string | null` 참고). 서비스 레이어에서 반환 전에 `startDate`/`endDate`/`date`를 `YYYY-MM-DD`로 포맷할 것, 풀 ISO datetime으로 직렬화되게 두지 말 것.
+- 이 계획의 모든 라우트는 기본적으로 보호됨(Plan 2의 전역 `JwtAuthGuard`) — 여기서는 어디에도 `@Public()`을 추가하지 말 것.
 
 ---
 
 ### Task 1: `CampaignsModule` — `GET /campaigns`, `POST /campaigns`
 
-**Files:**
-- Create: `server/src/campaigns/campaign.constants.ts`
-- Create: `server/src/campaigns/dto/create-campaign.dto.ts`
-- Create: `server/src/campaigns/campaigns.service.ts`
-- Create: `server/src/campaigns/campaigns.controller.ts`
-- Create: `server/src/campaigns/campaigns.module.ts`
-- Modify: `server/src/app.module.ts`
+**파일:**
+- 생성: `server/src/campaigns/campaign.constants.ts`
+- 생성: `server/src/campaigns/dto/create-campaign.dto.ts`
+- 생성: `server/src/campaigns/campaigns.service.ts`
+- 생성: `server/src/campaigns/campaigns.controller.ts`
+- 생성: `server/src/campaigns/campaigns.module.ts`
+- 수정: `server/src/app.module.ts`
 
-**Interfaces:**
-- Consumes: `PrismaService` (Plan 1).
-- Produces: `CampaignsService.findAll()`, `CampaignsService.create(dto)` — consumed by `CampaignsController` here, and implicitly by Plan 4's frontend `fetchCampaigns()`/`createCampaign()` once their internals point at this API.
+**인터페이스:**
+- 소비: `PrismaService`(Plan 1).
+- 산출물: `CampaignsService.findAll()`, `CampaignsService.create(dto)` — 여기서는 `CampaignsController`가 사용하고, Plan 4에서 프론트엔드 `fetchCampaigns()`/`createCampaign()`의 내부가 이 API를 가리키게 되면 암묵적으로 그쪽에서도 사용됨.
 
-- [ ] **Step 1: Mirror the frontend's validation limits**
+- [ ] **Step 1: 프론트엔드 검증 한도 그대로 반영**
 
 `server/src/campaigns/campaign.constants.ts`:
 ```ts
@@ -48,7 +48,7 @@ export const CAMPAIGN_LIMITS = {
 } as const;
 ```
 
-- [ ] **Step 2: Write the create DTO**
+- [ ] **Step 2: 생성 DTO 작성**
 
 `server/src/campaigns/dto/create-campaign.dto.ts`:
 ```ts
@@ -81,7 +81,7 @@ export class CreateCampaignDto {
 }
 ```
 
-- [ ] **Step 3: Write `CampaignsService`**
+- [ ] **Step 3: `CampaignsService` 작성**
 
 `server/src/campaigns/campaigns.service.ts`:
 ```ts
@@ -133,9 +133,9 @@ export class CampaignsService {
   }
 }
 ```
-The `CAMP-XXXXXX` random ID generation is lifted as-is from the frontend's current `createCampaign` in `features/campaign/services/api.ts:25` — moving ID generation server-side (matching where the data actually lives now) rather than keeping it client-side.
+`CAMP-XXXXXX` 랜덤 ID 생성은 `features/campaign/services/api.ts:25`의 기존 프론트엔드 `createCampaign`에서 그대로 가져온 것이다 — 데이터가 실제로 위치하는 곳에 맞춰, ID 생성을 클라이언트 쪽에 남겨두는 대신 서버 쪽으로 옮겼다.
 
-- [ ] **Step 4: Write `CampaignsController`**
+- [ ] **Step 4: `CampaignsController` 작성**
 
 `server/src/campaigns/campaigns.controller.ts`:
 ```ts
@@ -159,7 +159,7 @@ export class CampaignsController {
 }
 ```
 
-- [ ] **Step 5: Write `CampaignsModule` and register it**
+- [ ] **Step 5: `CampaignsModule` 작성하고 등록**
 
 `server/src/campaigns/campaigns.module.ts`:
 ```ts
@@ -174,28 +174,28 @@ import { CampaignsService } from './campaigns.service';
 export class CampaignsModule {}
 ```
 
-`server/src/app.module.ts` — add `CampaignsModule` to `imports`.
+`server/src/app.module.ts` — `imports`에 `CampaignsModule` 추가.
 
-- [ ] **Step 6: Verify with curl**
+- [ ] **Step 6: curl로 검증**
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:3001/auth/login -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"<ADMIN_PASSWORD from server/.env>"}' \
+  -d '{"email":"admin@example.com","password":"<server/.env의 ADMIN_PASSWORD>"}' \
   | python3 -c "import json,sys; print(json.load(sys.stdin)['accessToken'])")
 
-# List (expect 80 campaigns, startDate/endDate as "YYYY-MM-DD")
+# 목록 조회 (캠페인 80개, startDate/endDate가 "YYYY-MM-DD" 형태여야 함)
 curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3001/campaigns | python3 -m json.tool | head -20
 
-# Create (expect 201-shaped campaign object back with a CAMP-XXXXXX id)
+# 등록 (CAMP-XXXXXX id를 가진 캠페인 객체가 돌아와야 함)
 curl -s -X POST http://localhost:3001/campaigns -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"name":"테스트 캠페인","platform":"Google","status":"active","budget":500000,"startDate":"2026-08-01","endDate":"2026-08-31"}'
 
-# Validation failure (expect 400, {statusCode,message})
+# 검증 실패 케이스 (400, {statusCode,message}가 나와야 함)
 curl -s -X POST http://localhost:3001/campaigns -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"name":"a","platform":"Google","status":"active","budget":500000,"startDate":"2026-08-01","endDate":"2026-08-31"}'
 ```
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -205,17 +205,17 @@ git commit -m "feat: Campaigns 목록 조회/등록 API 추가"
 
 ---
 
-### Task 2: `PATCH /campaigns/:id` (status), `DELETE /campaigns/:id`
+### Task 2: `PATCH /campaigns/:id`(상태), `DELETE /campaigns/:id`
 
-**Files:**
-- Create: `server/src/campaigns/dto/update-campaign-status.dto.ts`
-- Modify: `server/src/campaigns/campaigns.service.ts`
-- Modify: `server/src/campaigns/campaigns.controller.ts`
+**파일:**
+- 생성: `server/src/campaigns/dto/update-campaign-status.dto.ts`
+- 수정: `server/src/campaigns/campaigns.service.ts`
+- 수정: `server/src/campaigns/campaigns.controller.ts`
 
-**Interfaces:**
-- Produces: `CampaignsService.updateStatus(id, dto)`, `CampaignsService.remove(id)`.
+**인터페이스:**
+- 산출물: `CampaignsService.updateStatus(id, dto)`, `CampaignsService.remove(id)`.
 
-- [ ] **Step 1: Write the status DTO**
+- [ ] **Step 1: 상태 변경 DTO 작성**
 
 `server/src/campaigns/dto/update-campaign-status.dto.ts`:
 ```ts
@@ -229,9 +229,9 @@ export class UpdateCampaignStatusDto {
 }
 ```
 
-- [ ] **Step 2: Add `updateStatus`/`remove` to `CampaignsService`**
+- [ ] **Step 2: `CampaignsService`에 `updateStatus`/`remove` 추가**
 
-Add to `server/src/campaigns/campaigns.service.ts`, alongside the existing `findAll`/`create`:
+`server/src/campaigns/campaigns.service.ts`의 기존 `findAll`/`create` 옆에 추가:
 ```ts
   async updateStatus(id: string, dto: UpdateCampaignStatusDto) {
     const campaign = await this.prisma.campaign.update({
@@ -251,11 +251,11 @@ Add to `server/src/campaigns/campaigns.service.ts`, alongside the existing `find
     await this.prisma.campaign.delete({ where: { id } });
   }
 ```
-Add the import: `import { UpdateCampaignStatusDto } from './dto/update-campaign-status.dto';`
+import 추가: `import { UpdateCampaignStatusDto } from './dto/update-campaign-status.dto';`
 
-- [ ] **Step 3: Add the routes to `CampaignsController`**
+- [ ] **Step 3: `CampaignsController`에 라우트 추가**
 
-Add to `server/src/campaigns/campaigns.controller.ts`:
+`server/src/campaigns/campaigns.controller.ts`에 추가:
 ```ts
   @Patch(':id')
   updateStatus(@Param('id') id: string, @Body() dto: UpdateCampaignStatusDto) {
@@ -268,25 +268,25 @@ Add to `server/src/campaigns/campaigns.controller.ts`:
     return this.campaignsService.remove(id);
   }
 ```
-Update the imports: `Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post` from `@nestjs/common`, and add `import { UpdateCampaignStatusDto } from './dto/update-campaign-status.dto';`.
+import 갱신: `@nestjs/common`에서 `Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post`를 가져오고, `import { UpdateCampaignStatusDto } from './dto/update-campaign-status.dto';` 추가.
 
-- [ ] **Step 4: Verify with curl**
+- [ ] **Step 4: curl로 검증**
 
 ```bash
-# Pick a real campaign id from the list first
+# 먼저 목록에서 실제 캠페인 id 하나 가져오기
 curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3001/campaigns | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])"
 
-# PATCH status
+# 상태 PATCH
 curl -s -X PATCH http://localhost:3001/campaigns/<id> -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"status":"paused"}'
-# Expect the updated campaign with status "paused"
+# status가 "paused"로 바뀐 캠페인이 돌아와야 함
 
-# DELETE the test campaign created in Task 1 (use its CAMP-XXXXXX id)
+# Task 1에서 만든 테스트 캠페인 삭제 (CAMP-XXXXXX id 사용)
 curl -s -o /dev/null -w "%{http_code}\n" -X DELETE http://localhost:3001/campaigns/<CAMP-XXXXXX> -H "Authorization: Bearer $TOKEN"
-# Expect 204
+# 204가 나와야 함
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -298,17 +298,17 @@ git commit -m "feat: Campaigns 상태 변경/삭제 API 추가"
 
 ### Task 3: `DailyStatsModule` — `GET /daily-stats`
 
-**Files:**
-- Create: `server/src/daily-stats/daily-stats.service.ts`
-- Create: `server/src/daily-stats/daily-stats.controller.ts`
-- Create: `server/src/daily-stats/daily-stats.module.ts`
-- Modify: `server/src/app.module.ts`
+**파일:**
+- 생성: `server/src/daily-stats/daily-stats.service.ts`
+- 생성: `server/src/daily-stats/daily-stats.controller.ts`
+- 생성: `server/src/daily-stats/daily-stats.module.ts`
+- 수정: `server/src/app.module.ts`
 
-**Interfaces:**
-- Consumes: `PrismaService`.
-- Produces: `GET /daily-stats`, matching `features/dashboard/services/api.ts`'s `fetchDailyStats()`.
+**인터페이스:**
+- 소비: `PrismaService`.
+- 산출물: `GET /daily-stats`, `features/dashboard/services/api.ts`의 `fetchDailyStats()`와 대응.
 
-- [ ] **Step 1: Write `DailyStatsService`**
+- [ ] **Step 1: `DailyStatsService` 작성**
 
 `server/src/daily-stats/daily-stats.service.ts`:
 ```ts
@@ -326,7 +326,7 @@ export class DailyStatsService {
 }
 ```
 
-- [ ] **Step 2: Write `DailyStatsController`**
+- [ ] **Step 2: `DailyStatsController` 작성**
 
 `server/src/daily-stats/daily-stats.controller.ts`:
 ```ts
@@ -344,7 +344,7 @@ export class DailyStatsController {
 }
 ```
 
-- [ ] **Step 3: Write `DailyStatsModule` and register it**
+- [ ] **Step 3: `DailyStatsModule` 작성하고 등록**
 
 `server/src/daily-stats/daily-stats.module.ts`:
 ```ts
@@ -359,16 +359,16 @@ import { DailyStatsService } from './daily-stats.service';
 export class DailyStatsModule {}
 ```
 
-`server/src/app.module.ts` — add `DailyStatsModule` to `imports`.
+`server/src/app.module.ts` — `imports`에 `DailyStatsModule` 추가.
 
-- [ ] **Step 4: Verify with curl**
+- [ ] **Step 4: curl로 검증**
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3001/daily-stats | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d), d[0])"
-# Expect: 1422 <first record, date as "YYYY-MM-DD">
+# 기대 결과: 1422 <첫 레코드, date는 "YYYY-MM-DD" 형태>
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -378,12 +378,12 @@ git commit -m "feat: DailyStats 목록 조회 API 추가"
 
 ---
 
-## Definition of Done for this plan
+## 이 계획의 완료 기준 (Definition of Done)
 
-- [x] `GET /campaigns` (with token) → 80 campaigns, dates as `"YYYY-MM-DD"`.
-- [x] `POST /campaigns` → creates a row with a `CAMP-XXXXXX` id; validation errors return 400 with `{statusCode,message}`.
-- [x] `PATCH /campaigns/:id` → updates status only, dates stay `"YYYY-MM-DD"` (fixed a bug where this route alone returned full ISO datetimes — see Task 2).
-- [x] `DELETE /campaigns/:id` → 204, row gone.
-- [x] `GET /daily-stats` (with token) → 1,422 rows, dates as `"YYYY-MM-DD"`.
-- [x] All of the above 401 without a token (global guard, unchanged from Plan 2).
-- [x] `pnpm test` and `pnpm run test:e2e` still pass.
+- [x] `GET /campaigns`(토큰 있음) → 캠페인 80개, 날짜는 `"YYYY-MM-DD"`.
+- [x] `POST /campaigns` → `CAMP-XXXXXX` id를 가진 행 생성; 검증 에러는 `{statusCode,message}` 형태로 400.
+- [x] `PATCH /campaigns/:id` → status만 변경, 날짜는 계속 `"YYYY-MM-DD"`(이 라우트만 풀 ISO datetime을 반환하던 버그를 고침 — Task 2 참고).
+- [x] `DELETE /campaigns/:id` → 204, 행 삭제됨.
+- [x] `GET /daily-stats`(토큰 있음) → 1,422행, 날짜는 `"YYYY-MM-DD"`.
+- [x] 위 전부 토큰 없으면 401(전역 가드, Plan 2와 동일).
+- [x] `pnpm test`와 `pnpm run test:e2e` 여전히 통과.

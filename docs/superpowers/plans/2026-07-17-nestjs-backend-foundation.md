@@ -1,57 +1,57 @@
-# NestJS Backend Foundation Implementation Plan
+# NestJS 백엔드 파운데이션 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **에이전트 작업자용:** 이 계획을 태스크 단위로 실행할 때는 superpowers:subagent-driven-development(추천) 또는 superpowers:executing-plans 서브스킬을 사용할 것. 각 스텝은 체크박스(`- [ ]`) 문법으로 추적한다.
 >
-> **This project's execution mode is PAIR PROGRAMMING, not autonomous execution.** The human (a 4-year frontend dev, new to NestJS) writes the actual code by hand to learn NestJS. The agent's role per step is: explain the concept in 2-3 sentences, show the exact code the step requires (so the human can compare/fix, not guess), then wait for the human to write it and run the verification command themselves before moving on. Do not use Write/Edit to create the human's source files unless they explicitly ask you to just do it. Reviewing (Read) and running verification commands together is fine.
+> **이 프로젝트의 실행 방식은 페어프로그래밍이지, 완전 자동 실행이 아니다.** 사람(4년차 프론트엔드 개발자, NestJS는 처음)이 직접 손으로 코드를 작성하며 NestJS를 배운다. 에이전트의 스텝별 역할은: 개념을 2~3문장으로 설명하고, 그 스텝에 필요한 정확한 코드를 보여주고(사람이 비교/수정할 수 있게, 추측하게 하지 않고), 사람이 직접 작성하고 검증 명령어를 스스로 실행할 때까지 기다리는 것. 사람이 명시적으로 "그냥 해달라"고 요청하지 않는 한 Write/Edit로 사람의 소스 파일을 대신 만들지 말 것. 함께 리뷰(Read)하거나 검증 명령어를 같이 실행하는 건 괜찮음.
 
-**Goal:** Replace `json-server` with a running local NestJS + PostgreSQL backend: project scaffold, Prisma schema, Docker-based local Postgres, and a seed script that loads `db.json`'s 80 campaigns / 1,422 daily stats / 1 admin user into real tables. No API business logic (auth, campaigns, daily-stats routes) yet — that's Plans 2-3.
+**목표:** `json-server`를 실제로 동작하는 로컬 NestJS + PostgreSQL 백엔드로 교체한다: 프로젝트 스캐폴딩, Prisma 스키마, Docker 기반 로컬 Postgres, 그리고 `db.json`의 캠페인 80개 / daily stats 1,422개 / admin 계정 1개를 실제 테이블로 옮기는 시딩 스크립트까지. API 비즈니스 로직(인증, campaigns, daily-stats 라우트)은 아직 없음 — 그건 Plan 2~3.
 
-**Architecture:** `server/` is a new, independent NestJS project living alongside the existing Next.js app in the same repo (no Nx/Turborepo). Local Postgres runs in Docker so the frontend's dev data can't be corrupted by backend experiments. `PrismaService` wraps `PrismaClient` as an injectable NestJS provider; a `/health` endpoint proves the DI wiring and DB connection work end-to-end before any real feature is built.
+**아키텍처:** `server/`는 기존 Next.js 앱과 같은 저장소 안에 공존하는 새로운 독립 NestJS 프로젝트다(Nx/Turborepo 없음). 로컬 Postgres는 Docker에서 돌려서 프론트엔드 개발 데이터가 백엔드 실험으로 오염되지 않게 한다. `PrismaService`가 `PrismaClient`를 주입 가능한 Nest 프로바이더로 감싸고, `/health` 엔드포인트로 실제 기능을 만들기 전에 DI 배선과 DB 연결이 end-to-end로 동작하는지 증명한다.
 
-**Tech Stack:** NestJS 11, Prisma 7 (driver adapters, `prisma.config.ts`, client generated to `server/generated/prisma`), `@prisma/adapter-pg`, PostgreSQL 16 (Docker), pnpm, Jest (ships with Nest scaffold), bcrypt, tsx (for the seed script).
+**기술 스택:** NestJS 11, Prisma 7(driver adapter, `prisma.config.ts`, 클라이언트는 `server/generated/prisma`에 생성), `@prisma/adapter-pg`, PostgreSQL 16(Docker), pnpm, Jest(Nest 스캐폴딩에 기본 포함), bcrypt, tsx(시딩 스크립트 실행용).
 
-## Global Constraints
+## 전역 제약사항
 
-- Package manager is **pnpm** everywhere (repo already uses `pnpm-lock.yaml` / `pnpm-workspace.yaml`) — never `npm install` / `yarn`.
-- Root frontend `tsconfig.json` has `"strict": true` — the new `server/tsconfig.json` (Nest default) also ships with `strict: true`; do not weaken it.
-- `server/` is a separate npm project with its own `package.json`/`node_modules`, not a pnpm workspace member (`pnpm-workspace.yaml` currently only lists build-dependency overrides, not workspace packages) — install its deps by `cd server && pnpm install`, not from the repo root.
-- Prisma enum `CampaignStatus` must have exactly 5 values: `active`, `paused`, `ended`, `stopped`, `running` (confirmed against live `db.json`: counts are active=31, ended=26, paused=21, stopped=1, running=1 — decided with the user to keep `running` as a real status rather than collapsing it into `active`).
-- `db.json` (repo root, one level above `server/`) is the seed source of truth: 80 campaigns, 1,422 daily_stats. Seed script must be idempotent (safe to re-run) via `upsert`.
-- `budget` in `db.json` is mixed type (`int | null | "2000000원"` string with a `원` suffix) — must normalize to `Int | null` in Prisma, never throw on the malformed value.
-- Never commit `server/.env` (already covered by root `.gitignore`'s `.env*` rule) — commit `server/.env.example` instead with placeholder values only.
-- No new features beyond this plan's scope (no auth, no CRUD routes yet — those are Plan 2/3). Don't add anything not listed in a task below.
+- 패키지 매니저는 어디서나 **pnpm** 사용(저장소가 이미 `pnpm-lock.yaml` / `pnpm-workspace.yaml`을 쓰고 있음) — `npm install` / `yarn` 절대 금지.
+- 루트 프론트엔드 `tsconfig.json`은 `"strict": true`다 — 새로 만드는 `server/tsconfig.json`(Nest 기본값)도 `strict: true`로 생성되니, 이걸 완화하지 말 것.
+- `server/`는 자체 `package.json`/`node_modules`를 가진 별도의 npm 프로젝트이며 pnpm 워크스페이스 멤버가 아니다(`pnpm-workspace.yaml`은 현재 빌드 의존성 예외 목록만 있고 워크스페이스 패키지 목록은 없음) — 의존성 설치는 `cd server && pnpm install`로 할 것, 저장소 루트에서 하지 말 것.
+- Prisma enum `CampaignStatus`는 정확히 5개 값을 가져야 함: `active`, `paused`, `ended`, `stopped`, `running`(실제 `db.json`으로 확인: active=31, ended=26, paused=21, stopped=1, running=1 — `running`을 `active`로 뭉개지 않고 실제 상태로 유지하기로 사용자와 결정).
+- `db.json`(저장소 루트, `server/`보다 한 단계 위)이 시딩 데이터의 출처다: 캠페인 80개, daily_stats 1,422개. 시딩 스크립트는 `upsert`를 써서 멱등성(재실행해도 안전)을 보장해야 함.
+- `db.json`의 `budget`은 타입이 섞여 있음(`int | null | "2000000원"`처럼 `원` 접미사가 붙은 문자열) — Prisma에서는 `Int | null`로 정규화해야 하고, 잘못된 값이 와도 절대 예외를 던지면 안 됨.
+- `server/.env`는 절대 커밋하지 말 것(루트 `.gitignore`의 `.env*` 규칙으로 이미 커버됨) — 대신 플레이스홀더 값만 담은 `server/.env.example`을 커밋할 것.
+- 이 계획의 범위를 벗어나는 새 기능은 추가하지 말 것(인증, CRUD 라우트는 아직 없음 — 그건 Plan 2/3). 아래 태스크에 없는 건 만들지 말 것.
 
 ---
 
-## Prerequisite (do this before Task 1)
+## 사전 준비 (Task 1 전에 할 것)
 
-Docker is not installed on this machine yet. Install Docker Desktop and make sure it's actually running (the whale icon in the menu bar) before Task 1:
+이 기기에는 아직 Docker가 설치되어 있지 않다. Task 1 전에 Docker Desktop을 설치하고 실제로 실행 중인지(메뉴바의 고래 아이콘) 확인할 것:
 
 ```bash
 brew install --cask docker
 open -a Docker
 ```
 
-Wait for Docker Desktop to finish starting, then confirm:
+Docker Desktop이 완전히 켜질 때까지 기다린 다음 확인:
 
 ```bash
 docker --version
 docker compose version
 ```
 
-Both must print a version number (not "command not found") before continuing.
+둘 다 버전 번호가 출력되어야 한다("command not found"가 아니라) — 그래야 다음으로 진행.
 
 ---
 
-### Task 1: Local Postgres via Docker Compose
+### Task 1: Docker Compose로 로컬 Postgres
 
-**Files:**
-- Create: `docker-compose.yml` (repo root)
+**파일:**
+- 생성: `docker-compose.yml` (저장소 루트)
 
-**Interfaces:**
-- Produces: a Postgres 16 instance reachable at `postgresql://dashboard:dashboard@localhost:5432/marketing_dashboard`, used by `server/.env`'s `DATABASE_URL` in Task 3.
+**인터페이스:**
+- 산출물: `postgresql://dashboard:dashboard@localhost:5432/marketing_dashboard`로 접속 가능한 Postgres 16 인스턴스. Task 3의 `server/.env`의 `DATABASE_URL`이 이걸 사용함.
 
-- [ ] **Step 1: Write `docker-compose.yml`**
+- [ ] **Step 1: `docker-compose.yml` 작성**
 
 ```yaml
 services:
@@ -71,17 +71,17 @@ volumes:
   postgres_data:
 ```
 
-- [ ] **Step 2: Start it**
+- [ ] **Step 2: 실행**
 
-Run: `docker compose up -d`
-Expected: `[+] Running 2/2` with `postgres` container `Started`/`Healthy`.
+실행: `docker compose up -d`
+기대 결과: `[+] Running 2/2`와 함께 `postgres` 컨테이너가 `Started`/`Healthy`.
 
-- [ ] **Step 3: Verify connectivity**
+- [ ] **Step 3: 연결 확인**
 
-Run: `docker compose exec postgres psql -U dashboard -d marketing_dashboard -c '\dt'`
-Expected: `Did not find any relations.` (empty DB, but connection succeeded — proves credentials/port are correct before Prisma touches it).
+실행: `docker compose exec postgres psql -U dashboard -d marketing_dashboard -c '\dt'`
+기대 결과: `Did not find any relations.` (테이블은 비어있지만 연결은 성공 — Prisma가 손대기 전에 자격증명/포트가 맞다는 걸 증명).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: 커밋**
 
 ```bash
 git add docker-compose.yml
@@ -90,26 +90,26 @@ git commit -m "chore: add local Postgres via Docker Compose"
 
 ---
 
-### Task 2: NestJS project scaffold
+### Task 2: NestJS 프로젝트 스캐폴딩
 
-**Files:**
-- Create: `server/` (entire NestJS CLI-generated project)
-- Modify: `server/src/main.ts`
+**파일:**
+- 생성: `server/` (NestJS CLI가 생성하는 프로젝트 전체)
+- 수정: `server/src/main.ts`
 
-**Interfaces:**
-- Produces: a runnable Nest app listening on port `3001` by default (same port `json-server` used, so `shared/constants/api.ts`'s `API_BASE_URL = "http://127.0.0.1:3001"` needs zero changes later in Plan 4).
+**인터페이스:**
+- 산출물: 기본적으로 `3001`번 포트에서 리슨하는 실행 가능한 Nest 앱(기존 `json-server`가 쓰던 포트와 동일해서, `shared/constants/api.ts`의 `API_BASE_URL = "http://127.0.0.1:3001"`을 Plan 4에서 바꿀 필요가 없음).
 
-- [ ] **Step 1: Scaffold the project**
+- [ ] **Step 1: 프로젝트 스캐폴딩**
 
-Run from the repo root:
+저장소 루트에서 실행:
 ```bash
 npx -y @nestjs/cli@11 new server --package-manager pnpm --skip-git
 ```
-Expected: `server/` directory created with `src/`, `test/`, `package.json`, `nest-cli.json`, `tsconfig.json`, and dependencies already installed via pnpm.
+기대 결과: `src/`, `test/`, `package.json`, `nest-cli.json`, `tsconfig.json`이 있는 `server/` 디렉토리가 생성되고, pnpm으로 의존성까지 이미 설치됨.
 
-- [ ] **Step 2: Point the default port at 3001**
+- [ ] **Step 2: 기본 포트를 3001로**
 
-Edit `server/src/main.ts` — the generated file looks like this:
+`server/src/main.ts` 수정 — 생성된 파일은 이렇게 생겼음:
 ```ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -120,25 +120,25 @@ async function bootstrap() {
 }
 bootstrap();
 ```
-Change the fallback port to `3001`:
+기본 포트를 `3001`로 변경:
 ```ts
   await app.listen(process.env.PORT ?? 3001);
 ```
 
-- [ ] **Step 3: Run it and verify**
+- [ ] **Step 3: 실행하고 확인**
 
-Run: `cd server && pnpm run start:dev`
-Expected: console shows `Nest application successfully started`, listening on port 3001.
+실행: `cd server && pnpm run start:dev`
+기대 결과: 콘솔에 `Nest application successfully started`가 뜨고 3001번 포트에서 리슨.
 
-In a second terminal: `curl http://localhost:3001`
-Expected: `Hello World!`
+다른 터미널에서: `curl http://localhost:3001`
+기대 결과: `Hello World!`
 
-- [ ] **Step 4: Run the generated test suites (sanity check before we add anything)**
+- [ ] **Step 4: 생성된 테스트 스위트 실행 (뭔가 추가하기 전 정상 동작 확인)**
 
-Run: `pnpm test` (unit) and `pnpm run test:e2e` (e2e) from inside `server/`
-Expected: both pass (1 test each, the CLI-generated `app.controller.spec.ts` / `app.e2e-spec.ts`).
+`server/` 안에서 `pnpm test`(유닛)와 `pnpm run test:e2e`(e2e) 실행
+기대 결과: 둘 다 통과(CLI가 생성한 `app.controller.spec.ts` / `app.e2e-spec.ts` 각각 테스트 1개씩).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -148,38 +148,38 @@ git commit -m "feat: scaffold NestJS server project"
 
 ---
 
-### Task 3: Prisma schema + migration
+### Task 3: Prisma 스키마 + 마이그레이션
 
-**Files:**
-- Create: `server/prisma/schema.prisma`
-- Create: `server/.env` (not committed)
-- Create: `server/.env.example`
-- Modify: `server/.gitignore` (verify `.env` is covered; Nest's default already ignores `.env`)
+**파일:**
+- 생성: `server/prisma/schema.prisma`
+- 생성: `server/.env` (커밋 안 함)
+- 생성: `server/.env.example`
+- 수정: `server/.gitignore` (`.env`가 이미 무시되는지 확인 — Nest 기본 설정에 이미 포함되어 있음)
 
-**Interfaces:**
-- Consumes: Postgres from Task 1 at `postgresql://dashboard:dashboard@localhost:5432/marketing_dashboard`.
-- Produces: `Admin`, `Campaign`, `DailyStat` tables and `CampaignStatus`/`Platform` enums, migration files under `server/prisma/migrations/`, used by `PrismaService` in Task 4 and `seed.ts` in Task 6.
+**인터페이스:**
+- 소비: Task 1의 Postgres, `postgresql://dashboard:dashboard@localhost:5432/marketing_dashboard`.
+- 산출물: `Admin`, `Campaign`, `DailyStat` 테이블과 `CampaignStatus`/`Platform` enum, `server/prisma/migrations/` 아래 마이그레이션 파일 — Task 4의 `PrismaService`와 Task 6의 `seed.ts`가 사용.
 
-- [ ] **Step 1: Install Prisma**
+- [ ] **Step 1: Prisma 설치**
 
-Run inside `server/`:
+`server/` 안에서 실행:
 ```bash
 pnpm add -D prisma dotenv
 pnpm add @prisma/client @prisma/adapter-pg
 npx prisma init --datasource-provider postgresql
 ```
-Expected: creates `server/prisma/schema.prisma` (default), `server/prisma.config.ts`, and `server/.env` with a placeholder `DATABASE_URL`. `@prisma/adapter-pg` is Prisma 7's PostgreSQL driver adapter — Prisma 7 dropped the old Rust query engine, so the client now needs an explicit adapter to talk to Postgres.
+기대 결과: `server/prisma/schema.prisma`(기본값), `server/prisma.config.ts`, 플레이스홀더 `DATABASE_URL`이 담긴 `server/.env` 생성. `@prisma/adapter-pg`는 Prisma 7의 PostgreSQL driver adapter다 — Prisma 7이 기존 Rust 쿼리 엔진을 제거해서, 이제 클라이언트가 Postgres와 통신하려면 명시적인 adapter가 필요함.
 
-If `pnpm install` stops with `[ERR_PNPM_IGNORED_BUILDS]` naming a package (e.g. `@prisma/engines`, `prisma`), that's pnpm's build-script approval gate, unrelated to Prisma itself: add the named package(s) to `server/pnpm-workspace.yaml` under both `allowBuilds` (set to `true`) and `onlyBuiltDependencies`, then re-run `pnpm install`.
+`pnpm install`이 `[ERR_PNPM_IGNORED_BUILDS]`와 함께 어떤 패키지 이름(예: `@prisma/engines`, `prisma`)을 언급하며 멈추면, 이건 pnpm의 빌드 스크립트 승인 게이트라 Prisma 자체와는 무관함: 해당 패키지를 `server/pnpm-workspace.yaml`의 `allowBuilds`(값을 `true`로)와 `onlyBuiltDependencies` 양쪽에 추가하고 `pnpm install`을 다시 실행할 것.
 
-- [ ] **Step 2: Set the real connection string**
+- [ ] **Step 2: 실제 연결 문자열 설정**
 
-Edit `server/.env`:
+`server/.env` 수정:
 ```
 DATABASE_URL="postgresql://dashboard:dashboard@localhost:5432/marketing_dashboard?schema=public"
 ```
 
-Create `server/.env.example` (this one IS committed) with placeholders:
+`server/.env.example`(이건 커밋함) 생성, 플레이스홀더로:
 ```
 DATABASE_URL="postgresql://dashboard:dashboard@localhost:5432/marketing_dashboard?schema=public"
 ADMIN_EMAIL="admin@example.com"
@@ -187,11 +187,11 @@ ADMIN_PASSWORD="change-me-before-seeding"
 JWT_SECRET="change-me"
 JWT_REFRESH_SECRET="change-me"
 ```
-(`ADMIN_EMAIL`/`ADMIN_PASSWORD` are used in Task 6; `JWT_*` are placeholders for Plan 2 — add now so `.env.example` stays a single source of truth for every env var the backend will need.)
+(`ADMIN_EMAIL`/`ADMIN_PASSWORD`는 Task 6에서 사용; `JWT_*`는 Plan 2를 위한 플레이스홀더 — 백엔드에 필요한 모든 환경변수를 `.env.example` 하나로 관리하기 위해 지금 미리 추가해둠.)
 
-- [ ] **Step 3: Replace `server/prisma/schema.prisma` with the real schema**
+- [ ] **Step 3: `server/prisma/schema.prisma`를 실제 스키마로 교체**
 
-Prisma 7 changed how the client is generated and configured (verified against `~/Documents/GitHub/nest-core`, the user's own working Prisma 7 + NestJS project, and the official `prisma.io/blog/nestjs-prisma-rest-api` guide): the generator now outputs a plain TS/JS client into a project folder (not `node_modules/@prisma/client`), and the datasource URL is wired through `prisma.config.ts` + a driver adapter instead of `datasource.url = env(...)`.
+Prisma 7은 클라이언트 생성·설정 방식을 바꿨다(사용자 본인의 기존 동작하는 Prisma 7 + NestJS 프로젝트인 `~/Documents/GitHub/nest-core`와 공식 `prisma.io/blog/nestjs-prisma-rest-api` 가이드로 확인): 이제 generator가 순수 TS/JS 클라이언트를 프로젝트 폴더에 생성하고(`node_modules/@prisma/client`가 아니라), datasource URL은 `datasource.url = env(...)` 대신 `prisma.config.ts` + driver adapter로 연결된다.
 
 ```prisma
 generator client {
@@ -249,19 +249,19 @@ model DailyStat {
 }
 ```
 
-`moduleFormat = "cjs"` matters even though it's absent from `nest-core`'s schema: without it, the generated client ships ESM `import`/`export` syntax, and running it under Nest's CommonJS build throws `ReferenceError: exports is not defined in ES module scope` the moment anything touches `PrismaClient`. If you hit that error, this is why — set `moduleFormat = "cjs"`, delete `server/generated` and `server/dist`, then re-run `npx prisma generate`.
+`moduleFormat = "cjs"`는 `nest-core`의 스키마엔 없지만 중요하다: 이게 없으면 생성된 클라이언트가 ESM `import`/`export` 문법으로 나오고, Nest의 CommonJS 빌드 위에서 실행하면 `PrismaClient`를 건드리는 순간 `ReferenceError: exports is not defined in ES module scope`가 뜬다. 이 에러를 보면 이게 원인이다 — `moduleFormat = "cjs"`를 설정하고, `server/generated`와 `server/dist`를 지운 뒤 `npx prisma generate`를 다시 실행할 것.
 
-- [ ] **Step 4: Run the migration**
+- [ ] **Step 4: 마이그레이션 실행**
 
-Run inside `server/`: `npx prisma migrate dev --name init`
-Expected: `Your database is now in sync with your schema.` + a new `server/prisma/migrations/<timestamp>_init/migration.sql` file.
+`server/` 안에서 실행: `npx prisma migrate dev --name init`
+기대 결과: `Your database is now in sync with your schema.`와 함께 새 `server/prisma/migrations/<timestamp>_init/migration.sql` 파일 생성.
 
-- [ ] **Step 5: Verify tables exist**
+- [ ] **Step 5: 테이블 생성 확인**
 
-Run: `docker compose exec postgres psql -U dashboard -d marketing_dashboard -c '\dt'`
-Expected: lists `Admin`, `Campaign`, `DailyStat`, and `_prisma_migrations`.
+실행: `docker compose exec postgres psql -U dashboard -d marketing_dashboard -c '\dt'`
+기대 결과: `Admin`, `Campaign`, `DailyStat`, `_prisma_migrations`가 나열됨.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -273,23 +273,23 @@ git commit -m "feat: add Prisma schema and initial migration"
 
 ### Task 4: PrismaService + health check
 
-**Files:**
-- Create: `server/src/prisma/prisma.service.ts`
-- Create: `server/src/prisma/prisma.module.ts`
-- Create: `server/src/health/health.controller.ts`
-- Modify: `server/src/app.module.ts`
-- Modify: `server/src/main.ts` (load `.env` before anything else boots)
-- Modify: `server/test/jest-e2e.json`, `server/package.json` (Jest/Prisma 7 compatibility — see Step 6)
+**파일:**
+- 생성: `server/src/prisma/prisma.service.ts`
+- 생성: `server/src/prisma/prisma.module.ts`
+- 생성: `server/src/health/health.controller.ts`
+- 수정: `server/src/app.module.ts`
+- 수정: `server/src/main.ts` (다른 무엇보다 먼저 `.env` 로드)
+- 수정: `server/test/jest-e2e.json`, `server/package.json` (Jest/Prisma 7 호환성 — Step 6 참고)
 
-**Interfaces:**
-- Consumes: the generated `PrismaClient` at `server/generated/prisma/client` (Task 3).
-- Produces: `PrismaService` (injectable, `server/src/prisma/prisma.service.ts`), importable via `PrismaModule` — Plan 2's `AuthModule` and Plan 3's `CampaignsModule`/`DailyStatsModule` will inject this same `PrismaService` into their own services.
+**인터페이스:**
+- 소비: `server/generated/prisma/client`에 생성된 `PrismaClient` (Task 3).
+- 산출물: `PrismaService`(주입 가능, `server/src/prisma/prisma.service.ts`), `PrismaModule`로 import 가능 — Plan 2의 `AuthModule`과 Plan 3의 `CampaignsModule`/`DailyStatsModule`이 이 동일한 `PrismaService`를 각자의 서비스에 주입해서 쓸 예정.
 
-> **Decision:** TDD was scoped down for this task after review — `/health` is a thin, logic-free endpoint (query DB, return a static object), so it was implemented directly and verified with `curl` instead of writing `server/test/health.e2e-spec.ts` first. TDD resumes at Task 5, which has real logic (a pure function) worth driving with tests. If you want the e2e test anyway, it's the same shape as the default `test/app.e2e-spec.ts` Nest generated in Task 2, just hitting `GET /health` and asserting `{ status: 'ok' }`.
+> **결정 사항:** 검토 후 이 태스크에서는 TDD를 생략했다 — `/health`는 로직이 거의 없는 얇은 엔드포인트(DB 쿼리 날리고 고정된 객체 반환)라서, `server/test/health.e2e-spec.ts`를 먼저 쓰는 대신 바로 구현하고 `curl`로 확인했다. TDD는 Task 5부터 다시 적용하는데, 거기엔 테스트로 몰아붙일 가치가 있는 진짜 로직(순수 함수)이 있다. 그래도 e2e 테스트를 원한다면, Task 2에서 Nest가 생성한 기본 `test/app.e2e-spec.ts`와 같은 모양으로 `GET /health`를 호출해서 `{ status: 'ok' }`인지 확인하면 된다.
 
-- [ ] **Step 1: Write `PrismaService`**
+- [ ] **Step 1: `PrismaService` 작성**
 
-Prisma 7 needs a driver adapter passed into the client constructor (confirmed against `~/Documents/GitHub/nest-core`'s working `PrismaService`, which does the same thing with `PrismaMariaDb` for its MySQL adapter — ours uses `PrismaPg` for Postgres). The generated client itself lives at `server/generated/prisma` (created by `prisma migrate`/`prisma generate` in the next steps, not committed to git), so the import path is relative, not `@prisma/client`.
+Prisma 7은 클라이언트 생성자에 driver adapter를 넘겨줘야 한다(`~/Documents/GitHub/nest-core`의 실제 동작하는 `PrismaService`로 확인 — 거긴 MySQL adapter인 `PrismaMariaDb`를 똑같은 방식으로 씀. 우리는 Postgres용 `PrismaPg`를 씀). 생성된 클라이언트 자체는 `server/generated/prisma`에 있고(다음 스텝들에서 `prisma migrate`/`prisma generate`가 만듦, git에는 커밋 안 함), 그래서 import 경로가 `@prisma/client`가 아니라 상대 경로다.
 
 `server/src/prisma/prisma.service.ts`:
 ```ts
@@ -314,7 +314,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 }
 ```
 
-- [ ] **Step 2: Write `PrismaModule` (global, so every future feature module can inject `PrismaService` without re-importing it)**
+- [ ] **Step 2: `PrismaModule` 작성 (전역으로 — 앞으로 만들 모든 기능 모듈이 재import 없이 `PrismaService`를 주입받을 수 있게)**
 
 `server/src/prisma/prisma.module.ts`:
 ```ts
@@ -329,7 +329,7 @@ import { PrismaService } from './prisma.service';
 export class PrismaModule {}
 ```
 
-- [ ] **Step 3: Write the health controller**
+- [ ] **Step 3: health 컨트롤러 작성**
 
 `server/src/health/health.controller.ts`:
 ```ts
@@ -348,9 +348,9 @@ export class HealthController {
 }
 ```
 
-- [ ] **Step 4: Wire both modules into `AppModule`**
+- [ ] **Step 4: 두 모듈을 `AppModule`에 연결**
 
-`server/src/app.module.ts` — add the imports and controller:
+`server/src/app.module.ts` — import와 controller 추가:
 ```ts
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
@@ -366,9 +366,9 @@ import { HealthController } from './health/health.controller';
 export class AppModule {}
 ```
 
-- [ ] **Step 5: Load `.env` in `main.ts`**
+- [ ] **Step 5: `main.ts`에서 `.env` 로드**
 
-`prisma.config.ts` loads `.env` for the Prisma CLI (`prisma migrate`, `prisma generate`), but `nest start` boots `main.ts` directly and never touches `prisma.config.ts` — so without this, `PrismaService`'s constructor reads `process.env.DATABASE_URL` as `undefined` and Postgres auth fails with a confusing `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string` error. Add the import as the very first line of `server/src/main.ts`:
+`prisma.config.ts`는 Prisma CLI(`prisma migrate`, `prisma generate`)를 위해 `.env`를 로드하지만, `nest start`는 `main.ts`를 직접 실행하고 `prisma.config.ts`는 전혀 건드리지 않는다 — 그래서 이걸 안 하면 `PrismaService`의 생성자가 `process.env.DATABASE_URL`을 `undefined`로 읽고, Postgres 인증이 `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string`라는 헷갈리는 에러로 실패한다. `server/src/main.ts`의 맨 첫 줄로 import 추가:
 ```ts
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
@@ -381,22 +381,22 @@ async function bootstrap() {
 bootstrap();
 ```
 
-- [ ] **Step 6: Verify manually with curl**
+- [ ] **Step 6: curl로 수동 확인**
 
-Run: `pnpm run start:dev`, wait for `Nest application successfully started`, then in another terminal:
+실행: `pnpm run start:dev`, `Nest application successfully started`를 기다린 다음 다른 터미널에서:
 ```bash
 curl -s http://localhost:3001/health
 ```
-Expected: `{"status":"ok"}`.
+기대 결과: `{"status":"ok"}`.
 
-- [ ] **Step 7: Fix Jest so `pnpm test` / `pnpm run test:e2e` still pass**
+- [ ] **Step 7: `pnpm test` / `pnpm run test:e2e`가 계속 통과하도록 Jest 수정**
 
-Adding `PrismaModule` to `AppModule` means every existing test that boots `AppModule` (the default `test/app.e2e-spec.ts` from Task 2) now transitively pulls in the generated Prisma client, which breaks Jest two different ways under Prisma 7 — neither is specific to anything we wrote, both are Prisma 7 + Jest interop gaps:
+`PrismaModule`을 `AppModule`에 추가했다는 건 `AppModule`을 부팅하는 기존 테스트(Task 2의 기본 `test/app.e2e-spec.ts`)가 이제 생성된 Prisma 클라이언트까지 딸려 들어온다는 뜻이고, 이게 Prisma 7에서 Jest를 두 가지 방식으로 깨뜨린다 — 둘 다 우리가 짠 코드와는 무관한, Prisma 7과 Jest 사이의 상호운용성 문제다:
 
-1. The generated client's `.ts` files import sibling files with an explicit `.js` extension (e.g. `import * as $Class from './internal/class.js'`) — standard for TS `nodenext`/`bundler` resolution, but ts-jest's default CommonJS resolution can't find a literal `class.js` file (only `class.ts` exists) and fails with `Cannot find module './internal/class.js'`.
-2. Prisma 7's client lazily loads its WASM query compiler via a dynamic `import()`, which Jest refuses to run without the `--experimental-vm-modules` Node flag, failing with `A dynamic import callback was invoked without --experimental-vm-modules`.
+1. 생성된 클라이언트의 `.ts` 파일들이 형제 파일을 `.js` 확장자로 명시해서 import한다(예: `import * as $Class from './internal/class.js'`) — TS의 `nodenext`/`bundler` 해석 방식에선 표준이지만, ts-jest의 기본 CommonJS 해석은 실제로는 없는 `class.js` 파일을 찾다가(`class.ts`만 존재) `Cannot find module './internal/class.js'`로 실패한다.
+2. Prisma 7의 클라이언트는 WASM 쿼리 컴파일러를 dynamic `import()`로 지연 로드하는데, Jest는 `--experimental-vm-modules` Node 플래그 없이는 이걸 거부하며 `A dynamic import callback was invoked without --experimental-vm-modules`로 실패한다.
 
-Fix 1 — add a `moduleNameMapper` that strips `.js` off relative imports before Jest resolves them, in **both** Jest configs:
+수정 1 — Jest가 상대 경로 import를 해석하기 전에 `.js`를 떼어내는 `moduleNameMapper`를 **두 Jest 설정 모두**에 추가:
 
 `server/test/jest-e2e.json`:
 ```json
@@ -414,9 +414,9 @@ Fix 1 — add a `moduleNameMapper` that strips `.js` off relative imports before
 }
 ```
 
-`server/package.json`'s `"jest"` block — add the same `moduleNameMapper` key alongside the existing `testEnvironment: "node"` line.
+`server/package.json`의 `"jest"` 블록 — 기존 `testEnvironment: "node"` 줄 옆에 동일한 `moduleNameMapper` 키 추가.
 
-Fix 2 — prefix the test scripts in `server/package.json` with the Node flag:
+수정 2 — `server/package.json`의 테스트 스크립트 앞에 Node 플래그 추가:
 ```json
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
@@ -424,10 +424,10 @@ Fix 2 — prefix the test scripts in `server/package.json` with the Node flag:
     "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json"
 ```
 
-Run: `pnpm test` and `pnpm run test:e2e`
-Expected: both still show `1 passed, 1 total` (the original Task 2 scaffold tests) — this step is about keeping the existing test suites green after `AppModule` started pulling in Prisma, not about adding new tests.
+실행: `pnpm test`와 `pnpm run test:e2e`
+기대 결과: 둘 다 여전히 `1 passed, 1 total`(Task 2 때의 원래 스캐폴딩 테스트) — 이 스텝은 `AppModule`이 Prisma를 끌어들이기 시작한 뒤에도 기존 테스트 스위트를 그린 상태로 유지하는 게 목적이지, 새 테스트를 추가하는 게 아님.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -437,16 +437,16 @@ git commit -m "feat: add PrismaService and /health endpoint"
 
 ---
 
-### Task 5: Budget normalization utility (TDD)
+### Task 5: budget 정규화 유틸 (TDD)
 
-**Files:**
-- Create: `server/src/prisma/seed-utils.ts`
-- Create: `server/src/prisma/seed-utils.spec.ts`
+**파일:**
+- 생성: `server/src/prisma/seed-utils.ts`
+- 생성: `server/src/prisma/seed-utils.spec.ts`
 
-**Interfaces:**
-- Produces: `normalizeBudget(raw: number | string | null): number | null`, consumed by `server/prisma/seed.ts` in Task 6.
+**인터페이스:**
+- 산출물: `normalizeBudget(raw: number | string | null): number | null`, Task 6의 `server/prisma/seed.ts`가 사용.
 
-- [ ] **Step 1: Write the failing unit test**
+- [ ] **Step 1: 실패하는 유닛 테스트 작성**
 
 `server/src/prisma/seed-utils.spec.ts`:
 ```ts
@@ -471,12 +471,12 @@ describe('normalizeBudget', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [ ] **Step 2: 실행해서 실패하는지 확인**
 
-Run: `cd server && pnpm test seed-utils`
-Expected: FAIL — `Cannot find module './seed-utils'`.
+실행: `cd server && pnpm test seed-utils`
+기대 결과: FAIL — `Cannot find module './seed-utils'`.
 
-- [ ] **Step 3: Implement it**
+- [ ] **Step 3: 구현**
 
 `server/src/prisma/seed-utils.ts`:
 ```ts
@@ -491,12 +491,12 @@ export function normalizeBudget(raw: number | string | null): number | null {
 }
 ```
 
-- [ ] **Step 4: Run it to verify it passes**
+- [ ] **Step 4: 실행해서 통과하는지 확인**
 
-Run: `pnpm test seed-utils`
-Expected: PASS — 4/4 tests green.
+실행: `pnpm test seed-utils`
+기대 결과: PASS — 4/4 테스트 통과.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -506,28 +506,28 @@ git commit -m "feat: add normalizeBudget seed utility with tests"
 
 ---
 
-### Task 6: Seed script (db.json → Postgres) + Admin seeding
+### Task 6: 시딩 스크립트 (db.json → Postgres) + Admin 시딩
 
-**Files:**
-- Create: `server/prisma/seed.ts`
-- Modify: `server/package.json` (add `prisma.seed` config + `ts-node`/`bcrypt` deps)
+**파일:**
+- 생성: `server/prisma/seed.ts`
+- 수정: `server/package.json` (`prisma.seed` 설정 + `ts-node`/`bcrypt` 의존성 추가)
 
-**Interfaces:**
-- Consumes: `normalizeBudget` (Task 5), `PrismaClient` (Task 3), `db.json` at repo root (one level above `server/`).
-- Produces: a populated database — 80 `Campaign` rows, 1,422 `DailyStat` rows, 1 `Admin` row — that Plan 2 (auth) and Plan 3 (campaigns/daily-stats API) will read from.
+**인터페이스:**
+- 소비: `normalizeBudget`(Task 5), `PrismaClient`(Task 3), 저장소 루트의 `db.json`(`server/`보다 한 단계 위).
+- 산출물: 데이터가 채워진 DB — `Campaign` 80행, `DailyStat` 1,422행, `Admin` 1행 — Plan 2(인증)와 Plan 3(campaigns/daily-stats API)가 여기서 읽어감.
 
-- [ ] **Step 1: Install seed-time dependencies**
+- [ ] **Step 1: 시딩용 의존성 설치**
 
-Run inside `server/`:
+`server/` 안에서 실행:
 ```bash
 pnpm add bcrypt
 pnpm add -D @types/bcrypt
 ```
-(`tsx`, used to actually run the seed script, was already installed alongside the Prisma driver adapter in Task 3.)
+(시딩 스크립트를 실제로 실행하는 `tsx`는 Task 3에서 Prisma driver adapter와 함께 이미 설치됨.)
 
-- [ ] **Step 2: Tell Prisma how to run the seed script**
+- [ ] **Step 2: 시딩 스크립트 실행 방법을 Prisma에게 알려주기**
 
-Prisma 7 reads the seed command from `prisma.config.ts`, not `package.json#prisma.seed` (that field is ignored now — same story as pnpm ignoring `package.json#pnpm` in Task 2). Edit `server/prisma.config.ts`, adding a `seed` key inside `migrations`:
+Prisma 7은 시딩 명령을 `package.json#prisma.seed`가 아니라 `prisma.config.ts`에서 읽는다(이 필드는 이제 무시됨 — Task 2에서 pnpm이 `package.json#pnpm`을 무시하던 것과 같은 얘기). `server/prisma.config.ts`를 수정해서 `migrations` 안에 `seed` 키 추가:
 ```ts
 import 'dotenv/config';
 import { defineConfig } from 'prisma/config';
@@ -544,7 +544,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 3: Write the seed script**
+- [ ] **Step 3: 시딩 스크립트 작성**
 
 `server/prisma/seed.ts`:
 ```ts
@@ -661,39 +661,39 @@ main()
   });
 ```
 
-- [ ] **Step 4: Set real admin credentials for local dev**
+- [ ] **Step 4: 로컬 개발용 실제 admin 계정 정보 설정**
 
-Edit `server/.env` (not committed) and set actual values, e.g.:
+`server/.env`(커밋 안 됨) 수정, 실제 값으로:
 ```
 ADMIN_EMAIL="admin@example.com"
 ADMIN_PASSWORD="pick-a-real-local-password"
 ```
 
-- [ ] **Step 5: Run the seed**
+- [ ] **Step 5: 시딩 실행**
 
-Run inside `server/`: `npx prisma db seed`
-Expected output ends with:
+`server/` 안에서 실행: `npx prisma db seed`
+기대 출력의 끝부분:
 ```
 Seeded 80 campaigns
 Seeded 1422 daily stats
 Seeded admin: admin@example.com
 ```
 
-- [ ] **Step 6: Verify counts directly against Postgres**
+- [ ] **Step 6: Postgres에서 카운트 직접 확인**
 
-Run:
+실행:
 ```bash
 docker compose exec postgres psql -U dashboard -d marketing_dashboard -c \
   'SELECT (SELECT COUNT(*) FROM "Campaign") AS campaigns, (SELECT COUNT(*) FROM "DailyStat") AS daily_stats, (SELECT COUNT(*) FROM "Admin") AS admins;'
 ```
-Expected: `campaigns=80`, `daily_stats=1422`, `admins=1`.
+기대 결과: `campaigns=80`, `daily_stats=1422`, `admins=1`.
 
-- [ ] **Step 7: Re-run the seed to confirm idempotency**
+- [ ] **Step 7: 재실행해서 멱등성 확인**
 
-Run: `npx prisma db seed` again.
-Expected: same log output, no duplicate-key errors, counts unchanged (upsert, not insert).
+실행: `npx prisma db seed` 한 번 더.
+기대 결과: 같은 로그 출력, 중복 키 에러 없음, 카운트 변화 없음(upsert지 insert가 아니므로).
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -703,19 +703,19 @@ git commit -m "feat: add db.json seed script with admin bootstrap"
 
 ---
 
-### Task 7: ~~Extend frontend `CampaignStatus`~~ — dropped, not needed
+### Task 7: ~~프론트엔드 `CampaignStatus` 확장~~ — 제외, 필요 없음
 
-**Superseded during Task 6.** This task assumed `db.json`'s `stopped`/`running` status values (and messy `platform` values like `네이버`/`facebook`/`Facebook`) needed new frontend types. They don't: `shared/utils/dataset.ts` already has `normalizeStatus` (`running`→`active`, `stopped`→`ended`) and `normalizePlatform` (keyword-matches messy strings to `Google`/`Naver`/`Meta`) — the existing frontend was already designed to collapse this exact messy data down to the original 3 statuses / 3 platforms. Widening `CampaignStatus` would have fought that established convention and left `STATUS_CONFIG`'s new `stopped`/`running` entries as dead code (nothing produces those values after normalization).
+**Task 6 도중에 대체됨.** 이 태스크는 `db.json`의 `stopped`/`running` 상태값(그리고 `네이버`/`facebook`/`Facebook` 같은 지저분한 `platform` 값)이 새로운 프론트엔드 타입을 필요로 한다고 가정했다. 아니다: `shared/utils/dataset.ts`에 이미 `normalizeStatus`(`running`→`active`, `stopped`→`ended`)와 `normalizePlatform`(지저분한 문자열을 키워드 매칭으로 `Google`/`Naver`/`Meta`로 변환)이 있다 — 기존 프론트엔드는 이미 이 정확히 지저분한 데이터를 원래 3개 상태 / 3개 플랫폼으로 뭉개도록 설계돼 있었다. `CampaignStatus`를 확장했다면 이 기존 컨벤션과 충돌했을 거고, `STATUS_CONFIG`에 새로 추가한 `stopped`/`running` 항목은 죽은 코드로 남았을 거다(정규화 이후엔 그 값들을 만들어내는 곳이 없으니까).
 
-Task 6's seed script mirrors the same normalization (`normalizeStatus`/`normalizePlatform`/`normalizeNumber` in `server/src/prisma/seed-utils.ts`) so Postgres only ever stores the 3 canonical statuses and 3 canonical platforms — no frontend changes required. `shared/types/index.ts`'s `CampaignStatus` stays `"active" | "paused" | "ended"`, unchanged.
+Task 6의 시딩 스크립트는 동일한 정규화(`server/src/prisma/seed-utils.ts`의 `normalizeStatus`/`normalizePlatform`/`normalizeNumber`)를 그대로 반영해서, Postgres에는 항상 3개의 정식 상태값과 3개의 정식 플랫폼만 저장된다 — 프론트엔드 변경 불필요. `shared/types/index.ts`의 `CampaignStatus`는 `"active" | "paused" | "ended"`로 그대로 유지.
 
 ---
 
-## Definition of Done for this plan
+## 이 계획의 완료 기준 (Definition of Done)
 
-- [x] `docker compose ps` shows a healthy `postgres` container.
-- [x] `cd server && pnpm run start:dev` boots without errors; `curl http://localhost:3001/health` returns `{"status":"ok"}`.
-- [x] `pnpm test` and `pnpm run test:e2e` (inside `server/`) both pass.
-- [x] Postgres has 80 campaigns, 1,422 daily stats, 1 admin (verified via `psql` count query).
-- [x] Frontend untouched — `CampaignStatus` stays 3 values (Task 7 dropped, see above).
-- [x] Nothing from Plan 2 (auth) or Plan 3 (campaigns/daily-stats routes) exists yet — `server/src` only has `app.*`, `prisma/`, `health/`.
+- [x] `docker compose ps`에서 `postgres` 컨테이너가 healthy로 표시됨.
+- [x] `cd server && pnpm run start:dev`가 에러 없이 부팅됨; `curl http://localhost:3001/health`가 `{"status":"ok"}` 반환.
+- [x] `pnpm test`와 `pnpm run test:e2e`(`server/` 안에서) 둘 다 통과.
+- [x] Postgres에 캠페인 80개, daily stats 1,422개, admin 1개 존재(`psql` 카운트 쿼리로 확인).
+- [x] 프론트엔드는 손대지 않음 — `CampaignStatus`는 3개 값 그대로(Task 7 제외, 위 참고).
+- [x] Plan 2(인증)나 Plan 3(campaigns/daily-stats 라우트)에 속한 건 아직 아무것도 없음 — `server/src`엔 `app.*`, `prisma/`, `health/`만 있음.

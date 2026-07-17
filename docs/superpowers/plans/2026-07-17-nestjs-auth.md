@@ -1,54 +1,54 @@
-# NestJS Auth (JWT) Implementation Plan
+# NestJS Auth(JWT) 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **에이전트 작업자용:** 이 계획을 태스크 단위로 실행할 때는 superpowers:subagent-driven-development(추천) 또는 superpowers:executing-plans 서브스킬을 사용할 것. 각 스텝은 체크박스(`- [ ]`) 문법으로 추적한다.
 >
-> **Execution mode for this plan: direct implementation, no TDD.** (Decided partway through Plan 1 — the human wants speed over hand-typing/test-first this session.) Each task is implemented directly, then verified with `curl`/manual checks instead of a test-first cycle.
+> **이 계획의 실행 방식: TDD 없이 바로 구현.** (Plan 1 도중에 결정됨 — 이번 세션에서는 사람이 손타이핑/테스트먼저보다 속도를 원함.) 각 태스크는 바로 구현한 다음 테스트먼저 사이클 대신 `curl`/수동 확인으로 검증한다.
 
-**Goal:** Single-admin JWT login for the NestJS API — `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, with every other route protected by a global `JwtAuthGuard` by default (opt out with `@Public()`).
+**목표:** NestJS API에 단일 admin JWT 로그인 붙이기 — `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, 나머지 모든 라우트는 전역 `JwtAuthGuard`로 기본 보호(`@Public()`으로 예외 처리).
 
-**Architecture:** Passport's `jwt` strategy validates the `Authorization: Bearer <accessToken>` header against `JWT_SECRET`. A separate, manually-verified refresh flow (not a second Passport strategy) checks `refreshToken` against `JWT_REFRESH_SECRET` inside `AuthService`. The guard is registered globally via `APP_GUARD` and denies by default; routes opt out with a `@Public()` decorator — `/health` and `/auth/*` are the only public routes in this plan.
+**아키텍처:** Passport의 `jwt` 전략이 `Authorization: Bearer <accessToken>` 헤더를 `JWT_SECRET`으로 검증한다. 별도의, 수동으로 검증하는 리프레시 흐름(두 번째 Passport 전략이 아니라)이 `AuthService` 안에서 `refreshToken`을 `JWT_REFRESH_SECRET`으로 확인한다. 가드는 `APP_GUARD`로 전역 등록되어 기본적으로 막고, 라우트는 `@Public()` 데코레이터로 예외 처리한다 — 이 계획에서 공개 라우트는 `/health`와 `/auth/*`뿐.
 
-**Tech Stack:** `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `class-validator`, `class-transformer`, bcrypt (already installed from Plan 1).
+**기술 스택:** `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `class-validator`, `class-transformer`, bcrypt(Plan 1에서 이미 설치됨).
 
-## Global Constraints
+## 전역 제약사항
 
-- Single admin, no signup, no multi-user — matches the design doc's non-goals. The admin row already exists in Postgres (seeded in Plan 1 Task 6 from `ADMIN_EMAIL`/`ADMIN_PASSWORD`).
-- Access token: 15 minutes. Refresh token: 7 days. Exact values from the design doc — don't change them.
-- No refresh-token rotation or revocation list (the design doc's "열린 질문" section explicitly allows this minimal version given the time budget) — `POST /auth/refresh` just verifies the existing refresh token and reissues a new access token.
-- Tokens are returned as **JSON response bodies**, never `Set-Cookie` — the design doc's BFF pattern has Next.js (Plan 4) set the httpOnly cookies, not this API.
-- `/health` must stay publicly reachable (no auth) — Railway/Render health checks hit it unauthenticated.
-- Global `ValidationPipe` (whitelist + transform) and a global exception filter normalizing errors to `{ statusCode, message }`, per the design doc's "모듈 구성" and "에러 처리" sections.
+- 단일 admin, 회원가입 없음, 멀티유저 없음 — 설계 문서의 non-goal과 일치. admin 행은 이미 Postgres에 존재(Plan 1 Task 6에서 `ADMIN_EMAIL`/`ADMIN_PASSWORD`로 시딩됨).
+- accessToken: 15분. refreshToken: 7일. 설계 문서의 정확한 값 — 바꾸지 말 것.
+- refresh token rotation이나 revocation list 없음(설계 문서의 "열린 질문" 섹션이 시간 예산을 고려해 이 최소 구현을 명시적으로 허용함) — `POST /auth/refresh`는 기존 refreshToken을 검증만 하고 새 accessToken을 재발급한다.
+- 토큰은 **JSON 응답 본문**으로 반환, `Set-Cookie`는 절대 안 씀 — 설계 문서의 BFF 패턴에서는 Next.js(Plan 4)가 httpOnly 쿠키를 설정하지, 이 API가 하는 게 아님.
+- `/health`는 계속 인증 없이 접근 가능해야 함 — Railway/Render 헬스체크가 인증 없이 여길 호출함.
+- 전역 `ValidationPipe`(whitelist + transform)와 에러를 `{ statusCode, message }`로 정규화하는 전역 예외 필터, 설계 문서의 "모듈 구성"과 "에러 처리" 섹션 기준.
 
 ---
 
-### Task 1: Install auth dependencies
+### Task 1: 인증 관련 의존성 설치
 
-**Files:**
-- Modify: `server/package.json`, `server/pnpm-lock.yaml`
+**파일:**
+- 수정: `server/package.json`, `server/pnpm-lock.yaml`
 
-- [ ] **Step 1: Install**
+- [ ] **Step 1: 설치**
 
-Run inside `server/`:
+`server/` 안에서 실행:
 ```bash
 pnpm add @nestjs/jwt @nestjs/passport passport passport-jwt class-validator class-transformer
 pnpm add -D @types/passport-jwt
 ```
-If `[ERR_PNPM_IGNORED_BUILDS]` appears for any new package, add it to `server/pnpm-workspace.yaml` under `allowBuilds: <pkg>: true` and `onlyBuiltDependencies`, then re-run `pnpm install` (same fix as Plan 1).
+새로 설치하는 패키지에서 `[ERR_PNPM_IGNORED_BUILDS]`가 뜨면, `server/pnpm-workspace.yaml`의 `allowBuilds: <pkg>: true`와 `onlyBuiltDependencies`에 추가하고 `pnpm install`을 다시 실행(Plan 1과 동일한 수정 방법).
 
-- [ ] **Step 2: Set real JWT secrets for local dev**
+- [ ] **Step 2: 로컬 개발용 실제 JWT 시크릿 설정**
 
-Edit `server/.env`, replacing the `JWT_SECRET`/`JWT_REFRESH_SECRET` placeholders carried over from `.env.example`:
+`server/.env`를 수정해서 `.env.example`에서 넘어온 `JWT_SECRET`/`JWT_REFRESH_SECRET` 플레이스홀더를 교체:
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
-Run that twice, paste each result into `server/.env`:
+이걸 두 번 실행해서 각 결과를 `server/.env`에 붙여넣기:
 ```
-JWT_SECRET="<first random hex string>"
-JWT_REFRESH_SECRET="<second random hex string>"
+JWT_SECRET="<첫 번째 랜덤 hex 문자열>"
+JWT_REFRESH_SECRET="<두 번째 랜덤 hex 문자열>"
 ```
-They must be different values — a token signed for access must never verify as a valid refresh token.
+반드시 서로 다른 값이어야 함 — access용으로 서명된 토큰이 refresh 토큰으로도 유효 검증되면 절대 안 됨.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -58,18 +58,18 @@ git commit -m "chore: add JWT/Passport/class-validator dependencies"
 
 ---
 
-### Task 2: `@Public()` decorator + global `ValidationPipe` + global exception filter
+### Task 2: `@Public()` 데코레이터 + 전역 `ValidationPipe` + 전역 예외 필터
 
-**Files:**
-- Create: `server/src/auth/public.decorator.ts`
-- Create: `server/src/common/http-exception.filter.ts`
-- Modify: `server/src/main.ts`
-- Modify: `server/src/health/health.controller.ts` (mark public — it has no guard to opt out of yet, but this is where the decorator gets used first)
+**파일:**
+- 생성: `server/src/auth/public.decorator.ts`
+- 생성: `server/src/common/http-exception.filter.ts`
+- 수정: `server/src/main.ts`
+- 수정: `server/src/health/health.controller.ts` (public 표시 — 아직 빠져나갈 가드가 없지만, 이 데코레이터가 처음 쓰이는 곳)
 
-**Interfaces:**
-- Produces: `Public()` decorator (`server/src/auth/public.decorator.ts`) and its metadata key `IS_PUBLIC_KEY`, consumed by `JwtAuthGuard` in Task 4.
+**인터페이스:**
+- 산출물: `Public()` 데코레이터(`server/src/auth/public.decorator.ts`)와 메타데이터 키 `IS_PUBLIC_KEY` — Task 4의 `JwtAuthGuard`가 사용.
 
-- [ ] **Step 1: Write the `@Public()` decorator**
+- [ ] **Step 1: `@Public()` 데코레이터 작성**
 
 `server/src/auth/public.decorator.ts`:
 ```ts
@@ -79,7 +79,7 @@ export const IS_PUBLIC_KEY = 'isPublic';
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 ```
 
-- [ ] **Step 2: Write the global exception filter**
+- [ ] **Step 2: 전역 예외 필터 작성**
 
 `server/src/common/http-exception.filter.ts`:
 ```ts
@@ -122,7 +122,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 }
 ```
 
-- [ ] **Step 3: Wire the filter and validation pipe into `main.ts`**
+- [ ] **Step 3: 필터와 validation pipe를 `main.ts`에 연결**
 
 `server/src/main.ts`:
 ```ts
@@ -141,9 +141,9 @@ async function bootstrap() {
 bootstrap();
 ```
 
-- [ ] **Step 4: Mark `/health` public**
+- [ ] **Step 4: `/health`를 public으로 표시**
 
-`server/src/health/health.controller.ts` — add the `@Public()` decorator above `@Controller('health')`:
+`server/src/health/health.controller.ts` — `@Controller('health')` 위에 `@Public()` 데코레이터 추가:
 ```ts
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -162,12 +162,12 @@ export class HealthController {
 }
 ```
 
-- [ ] **Step 5: Verify nothing broke**
+- [ ] **Step 5: 아무것도 안 깨졌는지 확인**
 
-Run: `pnpm run start:dev`, then `curl -s http://localhost:3001/health`
-Expected: `{"status":"ok"}` (no guard exists yet to block anything, this just confirms the new files compile and `main.ts` still boots).
+실행: `pnpm run start:dev`, 그다음 `curl -s http://localhost:3001/health`
+기대 결과: `{"status":"ok"}` (아직 막을 가드가 없으니, 이건 그냥 새 파일들이 컴파일되고 `main.ts`가 여전히 부팅되는지 확인하는 것).
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -177,17 +177,17 @@ git commit -m "feat: add global ValidationPipe, exception filter, @Public() deco
 
 ---
 
-### Task 3: `AuthService` — validate admin, issue and refresh tokens
+### Task 3: `AuthService` — admin 검증, 토큰 발급/재발급
 
-**Files:**
-- Create: `server/src/auth/dto/login.dto.ts`
-- Create: `server/src/auth/auth.service.ts`
+**파일:**
+- 생성: `server/src/auth/dto/login.dto.ts`
+- 생성: `server/src/auth/auth.service.ts`
 
-**Interfaces:**
-- Consumes: `PrismaService` (Plan 1) for `prisma.admin.findUnique`.
-- Produces: `AuthService.validateAdmin(email, password): Promise<Admin | null>`, `AuthService.login(admin): { accessToken: string; refreshToken: string }`, `AuthService.refresh(refreshToken: string): Promise<{ accessToken: string }>` — consumed by `AuthController` in Task 5.
+**인터페이스:**
+- 소비: `PrismaService`(Plan 1)의 `prisma.admin.findUnique`.
+- 산출물: `AuthService.validateAdmin(email, password): Promise<Admin | null>`, `AuthService.login(admin): { accessToken: string; refreshToken: string }`, `AuthService.refresh(refreshToken: string): Promise<{ accessToken: string }>` — Task 5의 `AuthController`가 사용.
 
-- [ ] **Step 1: Write the login DTO**
+- [ ] **Step 1: 로그인 DTO 작성**
 
 `server/src/auth/dto/login.dto.ts`:
 ```ts
@@ -203,7 +203,7 @@ export class LoginDto {
 }
 ```
 
-- [ ] **Step 2: Write `AuthService`**
+- [ ] **Step 2: `AuthService` 작성**
 
 `server/src/auth/auth.service.ts`:
 ```ts
@@ -264,7 +264,7 @@ export class AuthService {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -274,17 +274,17 @@ git commit -m "feat: add AuthService (validate admin, issue/refresh JWTs)"
 
 ---
 
-### Task 4: Passport JWT strategy + global `JwtAuthGuard`
+### Task 4: Passport JWT 전략 + 전역 `JwtAuthGuard`
 
-**Files:**
-- Create: `server/src/auth/jwt.strategy.ts`
-- Create: `server/src/auth/jwt-auth.guard.ts`
+**파일:**
+- 생성: `server/src/auth/jwt.strategy.ts`
+- 생성: `server/src/auth/jwt-auth.guard.ts`
 
-**Interfaces:**
-- Consumes: `IS_PUBLIC_KEY` (Task 2) via `Reflector`.
-- Produces: `JwtAuthGuard`, registered globally as `APP_GUARD` in Task 6 — every future controller (Plan 3's `CampaignsController`/`DailyStatsController`) is protected by default with no per-route setup needed.
+**인터페이스:**
+- 소비: `IS_PUBLIC_KEY`(Task 2)를 `Reflector`로 조회.
+- 산출물: `JwtAuthGuard`, Task 6에서 `APP_GUARD`로 전역 등록 — 앞으로 만들 모든 컨트롤러(Plan 3의 `CampaignsController`/`DailyStatsController`)가 라우트별 설정 없이 기본으로 보호됨.
 
-- [ ] **Step 1: Write the Passport strategy**
+- [ ] **Step 1: Passport 전략 작성**
 
 `server/src/auth/jwt.strategy.ts`:
 ```ts
@@ -307,9 +307,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 }
 ```
-Whatever `validate()` returns becomes `request.user` in every controller downstream — this is how Plan 3's `CampaignsController` would know who's calling, if this project had per-user data (it doesn't; single admin, but the pattern's there).
+`validate()`가 반환하는 값은 이후 모든 컨트롤러에서 `request.user`가 된다 — 이 프로젝트에 사용자별 데이터가 있었다면 Plan 3의 `CampaignsController`가 이렇게 호출자를 알았을 것이다(지금은 단일 admin이라 그럴 일 없지만, 패턴은 이미 갖춰짐).
 
-- [ ] **Step 2: Write the global guard**
+- [ ] **Step 2: 전역 가드 작성**
 
 `server/src/auth/jwt-auth.guard.ts`:
 ```ts
@@ -336,7 +336,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -346,18 +346,18 @@ git commit -m "feat: add Passport JWT strategy and global JwtAuthGuard"
 
 ---
 
-### Task 5: `AuthController` + `AuthModule`, registered globally
+### Task 5: `AuthController` + `AuthModule`, 전역 등록
 
-**Files:**
-- Create: `server/src/auth/auth.controller.ts`
-- Create: `server/src/auth/auth.module.ts`
-- Modify: `server/src/app.module.ts`
+**파일:**
+- 생성: `server/src/auth/auth.controller.ts`
+- 생성: `server/src/auth/auth.module.ts`
+- 수정: `server/src/app.module.ts`
 
-**Interfaces:**
-- Consumes: `AuthService` (Task 3), `JwtAuthGuard` (Task 4).
-- Produces: `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`. Every other route in the app is now guarded by default.
+**인터페이스:**
+- 소비: `AuthService`(Task 3), `JwtAuthGuard`(Task 4).
+- 산출물: `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`. 이제 앱의 나머지 모든 라우트가 기본적으로 가드로 보호됨.
 
-- [ ] **Step 1: Write `AuthController`**
+- [ ] **Step 1: `AuthController` 작성**
 
 `server/src/auth/auth.controller.ts`:
 ```ts
@@ -399,7 +399,7 @@ export class AuthController {
 }
 ```
 
-- [ ] **Step 2: Write `AuthModule`**
+- [ ] **Step 2: `AuthModule` 작성**
 
 `server/src/auth/auth.module.ts`:
 ```ts
@@ -417,9 +417,9 @@ import { JwtStrategy } from './jwt.strategy';
 })
 export class AuthModule {}
 ```
-`JwtModule.register({})` is intentionally empty — `AuthService` and `JwtStrategy` both pass `secret`/`expiresIn` explicitly per call (Task 3), since access and refresh tokens need different secrets. A module-level default here would be misleading.
+`JwtModule.register({})`를 일부러 비워둠 — `AuthService`와 `JwtStrategy` 둘 다 호출마다 `secret`/`expiresIn`을 명시적으로 넘기기 때문(Task 3), access와 refresh 토큰이 서로 다른 시크릿을 써야 해서다. 여기에 모듈 레벨 기본값을 두면 오히려 헷갈린다.
 
-- [ ] **Step 3: Register `AuthModule` and the global guard in `AppModule`**
+- [ ] **Step 3: `AuthModule`과 전역 가드를 `AppModule`에 등록**
 
 `server/src/app.module.ts`:
 ```ts
@@ -443,43 +443,43 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 export class AppModule {}
 ```
 
-- [ ] **Step 4: Verify the full flow with curl**
+- [ ] **Step 4: curl로 전체 흐름 검증**
 
-Restart the dev server (`pnpm run start:dev`), then:
+개발 서버 재시작(`pnpm run start:dev`) 후:
 ```bash
-# 1. Root route now requires auth (AppController isn't @Public())
+# 1. 루트 라우트가 이제 인증을 요구함 (AppController는 @Public()이 아님)
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3001/
-# Expected: 401
+# 기대 결과: 401
 
-# 2. Health stays public
+# 2. health는 계속 공개
 curl -s http://localhost:3001/health
-# Expected: {"status":"ok"}
+# 기대 결과: {"status":"ok"}
 
-# 3. Login with the seeded admin (use the ADMIN_EMAIL/ADMIN_PASSWORD from server/.env)
+# 3. 시딩된 admin으로 로그인 (server/.env의 ADMIN_EMAIL/ADMIN_PASSWORD 사용)
 curl -s -X POST http://localhost:3001/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"<your ADMIN_PASSWORD>"}'
-# Expected: {"accessToken":"...","refreshToken":"..."}
+  -d '{"email":"admin@example.com","password":"<실제 ADMIN_PASSWORD>"}'
+# 기대 결과: {"accessToken":"...","refreshToken":"..."}
 
-# 4. Use the accessToken to reach the previously-401 root route
-curl -s -H "Authorization: Bearer <accessToken from step 3>" \
+# 4. accessToken으로 방금 401이었던 루트 라우트 접근
+curl -s -H "Authorization: Bearer <3번 결과의 accessToken>" \
   -o /dev/null -w "%{http_code}\n" http://localhost:3001/
-# Expected: 200
+# 기대 결과: 200
 
 # 5. Refresh
 curl -s -X POST http://localhost:3001/auth/refresh \
   -H "Content-Type: application/json" \
-  -d '{"refreshToken":"<refreshToken from step 3>"}'
-# Expected: {"accessToken":"..."} (a new one)
+  -d '{"refreshToken":"<3번 결과의 refreshToken>"}'
+# 기대 결과: {"accessToken":"..."} (새로 발급된 것)
 
-# 6. Wrong password
+# 6. 잘못된 비밀번호
 curl -s -X POST http://localhost:3001/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@example.com","password":"wrong"}'
-# Expected: {"statusCode":401,"message":"이메일 또는 비밀번호가 올바르지 않습니다."}
+# 기대 결과: {"statusCode":401,"message":"이메일 또는 비밀번호가 올바르지 않습니다."}
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -489,14 +489,14 @@ git commit -m "feat: wire AuthController/AuthModule, guard all routes globally b
 
 ---
 
-## Definition of Done for this plan
+## 이 계획의 완료 기준 (Definition of Done)
 
-- [x] `GET /` (no token) → 401. `GET /health` (no token) → 200.
-- [x] `POST /auth/login` with correct admin credentials → `{ accessToken, refreshToken }`. Wrong password → 401 with `{ statusCode, message }` shape.
-- [x] Access token in `Authorization: Bearer` header unlocks `GET /` (200).
-- [x] `POST /auth/refresh` with a valid refresh token → new `{ accessToken }`.
-- [x] `pnpm test` and `pnpm run test:e2e` still pass — `test/app.e2e-spec.ts` was updated (not left regressed): `GET /` now asserts 401, since it's no longer `@Public()` and that's the intended global-guard behavior, not a bug.
+- [x] `GET /`(토큰 없음) → 401. `GET /health`(토큰 없음) → 200.
+- [x] 올바른 admin 계정으로 `POST /auth/login` → `{ accessToken, refreshToken }`. 잘못된 비밀번호 → `{ statusCode, message }` 형태로 401.
+- [x] `Authorization: Bearer` 헤더에 accessToken을 넣으면 `GET /` 접근 가능(200).
+- [x] 유효한 refreshToken으로 `POST /auth/refresh` → 새 `{ accessToken }`.
+- [x] `pnpm test`와 `pnpm run test:e2e` 여전히 통과 — `test/app.e2e-spec.ts`를 (방치하지 않고) 업데이트함: `GET /`가 이제 `@Public()`이 아니므로 401을 검증하도록 바꿈, 이건 의도된 전역 가드 동작이지 버그가 아님.
 
-**Two Jest-specific fixes needed that weren't anticipated in the original task steps:**
-- `process.env.JWT_SECRET` needed `as string` in `jwt.strategy.ts` — passport-jwt's `secretOrKey` type doesn't accept `string | undefined`.
-- Jest never runs `main.ts`, so `.env` was never loaded for tests, and `JwtStrategy` threw `requires a secret or key` — fixed by adding `"setupFiles": ["dotenv/config"]` to both `server/test/jest-e2e.json` and `server/package.json`'s `"jest"` block.
+**원래 태스크 스텝엔 없었지만 필요했던 Jest 관련 수정 2건:**
+- `jwt.strategy.ts`에서 `process.env.JWT_SECRET`에 `as string`이 필요했음 — passport-jwt의 `secretOrKey` 타입이 `string | undefined`를 받지 않음.
+- Jest는 `main.ts`를 절대 실행하지 않아서 테스트에서는 `.env`가 로드된 적이 없었고, `JwtStrategy`가 `requires a secret or key`를 던졌음 — `server/test/jest-e2e.json`과 `server/package.json`의 `"jest"` 블록 양쪽에 `"setupFiles": ["dotenv/config"]`를 추가해서 해결.
