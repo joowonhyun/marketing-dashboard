@@ -159,53 +159,43 @@ curl -s https://<render-url>/health
 
 ---
 
-### Task 4: GitHub Actions 헬스체크 크론으로 콜드스타트 방지
+### Task 4: 헬스체크 모니터로 콜드스타트 방지
 
-**배경:** Render 무료 티어는 15분간 인바운드 트래픽이 없으면 슬립되고, 다음 요청에서 깨어나는 데 30~60초가 걸린다([Render 공식 문서](https://render.com/docs/free) 확인). 포트폴리오 방문자(면접관 등)가 첫 방문에 이 지연을 그대로 겪으면 안 좋은 인상을 줄 수 있다. 이 리포지토리는 public이라 GitHub Actions 분수 제한이 없으므로, 5분 간격으로 `/health`를 호출하는 scheduled workflow로 슬립 자체를 막는다.
+**배경:** Render 무료 티어는 15분간 인바운드 트래픽이 없으면 슬립되고, 다음 요청에서 깨어나는 데 30~60초가 걸린다([Render 공식 문서](https://render.com/docs/free) 확인). 포트폴리오 방문자(면접관 등)가 첫 방문에 이 지연을 그대로 겪으면 안 좋은 인상을 줄 수 있다.
 
-**5분인 이유:** GitHub Actions의 `schedule` 트리거는 "best effort"라 정시에 정확히 실행되지 않고 몇 분씩 밀릴 수 있다. 슬립 임계값(15분)에 딱 맞춰 10분 간격으로 잡으면 지연 시 임계값을 넘길 위험이 있어, 여유를 둔 5분 간격을 쓴다.
+**1차 시도(GitHub Actions) 실패 기록:** 처음엔 `.github/workflows/keep-alive.yml`(`schedule: */5 * * * *`)로 해결하려 했다. 그런데 실제로는 최초 푸시 후 80분간 `schedule` 트리거가 단 한 번도 안 돎, 재푸시로 1회 성공했으나 그 이후 다시 29분간(4번의 하트비트 관찰) 전혀 발화하지 않음 — GitHub Actions의 `schedule` 트리거가 이 저장소에서 신뢰할 수 없다는 게 실증적으로 확인됨. `.github/workflows/keep-alive.yml`은 삭제하고 외부 서비스로 전환.
+
+**최종 방식: UptimeRobot(외부 무료 uptime 모니터).** GitHub 내부 스케줄러에 의존하지 않고, 전용 모니터링 서비스가 5분 간격으로 직접 핑을 쏘게 한다.
 
 **비용 확인:** 5분 간격이면 서비스가 사실상 계속 깨어있게 되어 월 720~744시간 가동되는데, Render 무료 티어 한도(750시간/월)를 넘지 않는다.
 
-**파일:**
-- 생성: `.github/workflows/keep-alive.yml`
-
 **전제:** Task 3에서 확인한 Render URL.
 
-- [x] **Step 1: 워크플로 파일 작성 (에이전트 실행, Render URL은 사용자가 제공)**
+- [x] **Step 1: (실패) GitHub Actions 워크플로 시도 및 제거 (에이전트 실행)**
 
-`.github/workflows/keep-alive.yml`:
-```yaml
-name: Render 백엔드 슬립 방지
-
-on:
-  schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
-
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - name: /health 호출
-        run: curl -sf https://<render-url>/health
-```
-
-`<render-url>`을 Task 3에서 확인한 실제 Render URL로 치환한다.
-
-- [x] **Step 2: 커밋 및 푸시 (에이전트 실행)**
-
+`.github/workflows/keep-alive.yml` 생성 → 최초 80분간 미발화, 재푸시 후 1회만 성공, 이후 29분간 재발화 없음 확인. 신뢰할 수 없다고 판단해 삭제:
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
-git add .github/workflows/keep-alive.yml
-git commit -m "ci: Render 백엔드 슬립 방지용 5분 간격 헬스체크 크론 추가"
+git rm .github/workflows/keep-alive.yml
+git commit -m "ci: keep-alive를 GitHub Actions에서 UptimeRobot으로 전환(schedule 트리거 미발화 확인됨)"
 git push origin main
 ```
-`git push`는 원격 저장소에 반영되는 작업이라 실행 전 사용자 확인을 받는다.
 
-- [x] **Step 3: 수동 실행으로 동작 확인 (사용자 작업)**
+- [ ] **Step 2: UptimeRobot 가입 및 모니터 등록 (사용자 작업)**
 
-GitHub 리포지토리 → Actions 탭 → "Render 백엔드 슬립 방지" workflow → "Run workflow"(`workflow_dispatch`)로 즉시 1회 실행 → 초록색 체크(성공)로 끝나는지 확인. 이후엔 5분마다 자동 실행된다.
+1. https://uptimerobot.com 무료 가입(신용카드 불필요).
+2. "+ Add New Monitor" 클릭, 다음 값으로 설정:
+
+| 필드 | 값 |
+|---|---|
+| Monitor Type | HTTP(s) |
+| Friendly Name | marketing-dashboard-api |
+| URL | `https://<render-url>/health` |
+| Monitoring Interval | 5 minutes |
+
+- [ ] **Step 3: 동작 확인 (에이전트 실행)**
+
+UptimeRobot 대시보드에 모니터가 "Up" 상태로 뜨는지 확인 후, 5~10분 뒤 Render `/health`에 curl을 날려 응답 시간이 콜드스타트 없이 빠른지(수초 이내) 확인한다.
 
 ---
 
