@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { PrismaClient, CampaignStatus, Platform } from '../../generated/prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client';
 
 export interface RawCampaign {
   id: string;
@@ -44,7 +44,8 @@ export const normalizeStatus = (raw: string): 'active' | 'paused' | 'ended' => {
   const lower = raw.toLowerCase();
   if (lower === 'running') return 'active';
   if (lower === 'stopped') return 'ended';
-  if (lower === 'active' || lower === 'paused' || lower === 'ended') return lower;
+  if (lower === 'active' || lower === 'paused' || lower === 'ended')
+    return lower;
   return 'active';
 };
 
@@ -57,8 +58,10 @@ const PLATFORM_MATCH_KEYWORDS: Record<'Google' | 'Naver' | 'Meta', string[]> = {
 // 프론트엔드 shared/utils/dataset.ts의 normalizePlatform과 동일한 매칭 규칙.
 export const normalizePlatform = (raw: string): 'Google' | 'Naver' | 'Meta' => {
   const lower = raw.toLowerCase();
-  const matched = (Object.keys(PLATFORM_MATCH_KEYWORDS) as Array<'Google' | 'Naver' | 'Meta'>).find(
-    (key) => PLATFORM_MATCH_KEYWORDS[key].some((keyword) => lower.includes(keyword)),
+  const matched = (
+    Object.keys(PLATFORM_MATCH_KEYWORDS) as Array<'Google' | 'Naver' | 'Meta'>
+  ).find((key) =>
+    PLATFORM_MATCH_KEYWORDS[key].some((keyword) => lower.includes(keyword)),
   );
   return matched ?? 'Google';
 };
@@ -100,7 +103,9 @@ export const applySeedDataset = async (
   raw: SeedDataset,
 ): Promise<{ campaignCount: number; dailyStatCount: number }> => {
   const originalCampaignIds = raw.campaigns.map((c) => c.id);
-  await prisma.campaign.deleteMany({ where: { id: { notIn: originalCampaignIds } } });
+  await prisma.campaign.deleteMany({
+    where: { id: { notIn: originalCampaignIds } },
+  });
 
   const allDates = [
     ...raw.campaigns.flatMap((c) => [c.startDate, c.endDate]),
@@ -118,8 +123,8 @@ export const applySeedDataset = async (
       where: { id: c.id },
       update: {
         name: c.name,
-        status: normalizeStatus(c.status) as CampaignStatus,
-        platform: normalizePlatform(c.platform) as Platform,
+        status: normalizeStatus(c.status),
+        platform: normalizePlatform(c.platform),
         budget: normalizeBudget(c.budget),
         startDate: shiftDateString(c.startDate),
         endDate: shiftDateString(c.endDate),
@@ -127,8 +132,8 @@ export const applySeedDataset = async (
       create: {
         id: c.id,
         name: c.name,
-        status: normalizeStatus(c.status) as CampaignStatus,
-        platform: normalizePlatform(c.platform) as Platform,
+        status: normalizeStatus(c.status),
+        platform: normalizePlatform(c.platform),
         budget: normalizeBudget(c.budget),
         startDate: shiftDateString(c.startDate),
         endDate: shiftDateString(c.endDate),
@@ -162,5 +167,8 @@ export const applySeedDataset = async (
     });
   }
 
-  return { campaignCount: raw.campaigns.length, dailyStatCount: raw.daily_stats.length };
+  return {
+    campaignCount: raw.campaigns.length,
+    dailyStatCount: raw.daily_stats.length,
+  };
 };

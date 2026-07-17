@@ -10,4 +10,4 @@ const bootstrap = async () => {
   app.useGlobalFilters(new HttpExceptionFilter());
   await app.listen(process.env.PORT ?? 3001);
 };
-bootstrap();
+void bootstrap();
