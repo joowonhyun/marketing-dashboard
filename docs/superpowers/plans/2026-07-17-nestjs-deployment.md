@@ -100,7 +100,7 @@ psql "<Neon 연결 문자열>" -c \
 
 **산출물:** `https://<서비스명>.onrender.com` 형태의 백엔드 URL, `/health`가 200 응답.
 
-- [ ] **Step 1: Render 웹 서비스 생성 (사용자 작업)**
+- [x] **Step 1: Render 웹 서비스 생성 (사용자 작업)**
 
 1. https://render.com 가입/로그인, GitHub 계정 연동 후 `joowonhyun/marketing-dashboard` 리포지토리 접근 권한 부여.
 2. "New" → "Web Service" → 해당 리포지토리 선택.
@@ -119,7 +119,7 @@ psql "<Neon 연결 문자열>" -c \
 
 **첫 배포 시도에서 발견/수정된 버그:** `generated/prisma/`가 `src/` 바깥(server root)에 있어서 `nest build`의 암묵적 `rootDir`이 `server/` 전체로 잡히고, 그 결과 `dist/main.js`가 아니라 `dist/src/main.js`가 만들어진다(로컬에서 `pnpm run build` 실행 전까진 아무도 몰랐던 기존 버그 — `start:dev`는 `dist/`를 거치지 않아 안 드러났음). `tsconfig.build.json`에 `rootDir: "./src"`를 강제하면 `generated/prisma` import가 rootDir 밖이라 컴파일 에러가 나서 이 방법은 불가능. 대신 `server/package.json`의 `start:prod` 스크립트를 `node dist/src/main`으로 고쳤고, Start Command도 하드코딩된 경로 대신 `pnpm run start:prod`를 쓰도록 위 표를 수정함(빌드 경로가 바뀌어도 Render 설정을 다시 안 건드려도 되게).
 
-- [ ] **Step 2: 환경변수 설정 (사용자 작업)**
+- [x] **Step 2: 환경변수 설정 (사용자 작업)**
 
 Render 서비스의 Environment 탭에서 추가:
 
@@ -134,7 +134,7 @@ Render 서비스의 Environment 탭에서 추가:
 
 `PORT`는 Render가 자동으로 주입하므로 설정하지 않는다 — `server/src/main.ts`가 이미 `process.env.PORT ?? 3001`을 쓰고 있어 코드 변경 불필요.
 
-- [ ] **Step 3: JWT 시크릿 생성 (에이전트 실행)**
+- [x] **Step 3: JWT 시크릿 생성 (에이전트 실행)**
 
 ```bash
 echo "JWT_SECRET: $(openssl rand -base64 32)"
@@ -142,7 +142,7 @@ echo "JWT_REFRESH_SECRET: $(openssl rand -base64 32)"
 ```
 출력된 두 값을 Step 2의 Render 환경변수에 각각 입력.
 
-- [ ] **Step 4: 배포 실행 및 로그 확인 (사용자 작업, 필요 시 에이전트가 로그 원문 확인)**
+- [x] **Step 4: 배포 실행 및 로그 확인 (사용자 작업, 필요 시 에이전트가 로그 원문 확인)**
 
 Render가 자동으로 첫 배포를 시작한다("Auto-Deploy" 기본 활성화). 배포 로그에서 다음을 확인:
 - `pnpm install` 성공
@@ -150,7 +150,7 @@ Render가 자동으로 첫 배포를 시작한다("Auto-Deploy" 기본 활성화
 - `nest build` 성공
 - `Nest application successfully started` 로그 출력
 
-- [ ] **Step 5: health check로 배포 검증 (에이전트 실행, URL은 사용자가 제공)**
+- [x] **Step 5: health check로 배포 검증 (에이전트 실행, URL은 사용자가 제공)**
 
 ```bash
 curl -s https://<render-url>/health
