@@ -16,11 +16,10 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+  // JwtAuthGuard가 전역으로 걸려 있어서 토큰 없이는 401 — 가드가 기본적으로
+  // 모든 라우트를 막는다는 걸 보여주는 테스트로 용도를 바꿨다.
+  it('/ (GET) without a token is rejected', () => {
+    return request(app.getHttpServer()).get('/').expect(401);
   });
 
   afterEach(async () => {
