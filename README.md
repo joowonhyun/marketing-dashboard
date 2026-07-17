@@ -4,7 +4,7 @@
 
 실시간 마케팅 성과를 시각화하고 캠페인을 효율적으로 관리하기 위한 풀스택 웹 애플리케이션입니다.
 Next.js(App Router)와 NestJS를 BFF(Backend-for-Frontend) 패턴으로 연결하고, JWT 인증으로 대시보드 전체를 보호합니다. <br/>
-https://marketing-dashboard-xi-wine.vercel.app/
+https://www.marketing-dashboard.site
 
 
 ---
