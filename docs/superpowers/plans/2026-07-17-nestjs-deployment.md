@@ -33,14 +33,14 @@
 **인터페이스:**
 - 변경 없음 — `API_BASE_URL` export 시그니처(문자열 상수) 그대로 유지, 값의 출처만 하드코딩에서 env로 바뀜. 소비자(`shared/utils/api-client.ts` 등)는 수정 불필요.
 
-- [ ] **Step 1: env 기반으로 전환 (에이전트 실행)**
+- [x] **Step 1: env 기반으로 전환 (에이전트 실행)**
 
 `frontend/shared/constants/api.ts` 전체를 다음으로 교체:
 ```ts
 export const API_BASE_URL = process.env.API_BASE_URL ?? "http://127.0.0.1:3001";
 ```
 
-- [ ] **Step 2: 로컬에서 회귀 확인 (에이전트 실행)**
+- [x] **Step 2: 로컬에서 회귀 확인 (에이전트 실행)**
 
 ```bash
 cd frontend
@@ -48,7 +48,7 @@ pnpm dev
 ```
 `http://localhost:3000`에서 로그인 → 대시보드 로딩까지 정상 동작하는지 확인(값이 fallback으로 기존과 동일하게 `http://127.0.0.1:3001`을 가리키므로 동작 변화 없어야 함).
 
-- [ ] **Step 3: 커밋 (에이전트 실행)**
+- [x] **Step 3: 커밋 (에이전트 실행)**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -65,7 +65,7 @@ git commit -m "feat: API_BASE_URL을 env 기반으로 전환(배포 시 Render U
 - [ ] **Step 1: Neon 프로젝트 생성 (사용자 작업)**
 
 1. https://neon.tech 에서 가입/로그인 (GitHub 계정 연동 가능).
-2. "New Project" 생성. 이름: `marketing-dashboard`. Postgres 버전: 기본값(17) 그대로. 리전: 가장 가까운 곳(아시아 리전이 있으면 선택, 없으면 기본값).
+2. "New Project" 생성. 이름: `marketing-dashboard`. **Postgres 버전: 16을 명시적으로 선택**(Neon 기본값은 현재 18이지만, 로컬 `docker-compose.yml`이 `postgres:16-alpine`을 쓰고 있어 dev/prod parity를 맞춤 — Neon은 14~18을 모두 지원해 드롭다운에서 고르기만 하면 됨). 리전: 가장 가까운 곳(아시아 리전이 있으면 선택, 없으면 기본값).
 3. 프로젝트 생성 후 대시보드의 "Connection string"에서 **Pooled connection이 아닌 direct(non-pooled) connection string**을 복사한다 — Render는 서버리스가 아니라 상시 실행되는 Node 프로세스라 Prisma의 자체 커넥션 풀(`@prisma/adapter-pg`)을 그대로 쓰는 게 pgbouncer 관련 prepared-statement 이슈를 피하는 더 단순한 선택.
 4. 형식: `postgresql://<user>:<password>@<host>/<dbname>?sslmode=require`
 
@@ -217,7 +217,7 @@ GitHub 리포지토리 → Actions 탭 → "Render 백엔드 슬립 방지" work
 - 생성: `.github/workflows/ci.yml`
 - 수정: `README.md` (CI 배지)
 
-- [ ] **Step 1: 워크플로 작성 (에이전트 실행)**
+- [x] **Step 1: 워크플로 작성 (에이전트 실행)**
 
 `.github/workflows/ci.yml`:
 ```yaml
@@ -295,7 +295,7 @@ jobs:
 
 `eslint` 호출은 `server/package.json`의 `lint` 스크립트(`--fix` 포함)를 쓰지 않고 직접 `npx eslint`를 호출한다 — CI는 자동으로 코드를 고치면 안 되고 위반이 있으면 실패해야 하기 때문. `frontend`의 `lint` 스크립트는 이미 `--fix` 없이 `eslint`만 실행하므로 그대로 사용.
 
-- [ ] **Step 2: 로컬에서 동일한 조건으로 사전 검증 (에이전트 실행)**
+- [x] **Step 2: 로컬에서 동일한 조건으로 사전 검증 (에이전트 실행)**
 
 CI가 실패하는 걸 나중에 발견하지 않도록, 로컬에서 동일 명령을 미리 실행:
 ```bash
@@ -306,14 +306,14 @@ pnpm run lint && npx tsc --noEmit && pnpm run build
 ```
 전부 에러 없이 통과해야 한다.
 
-- [ ] **Step 3: README에 CI 배지 추가 (에이전트 실행)**
+- [x] **Step 3: README에 CI 배지 추가 (에이전트 실행)**
 
 README 제목 바로 아래에 배지 추가:
 ```markdown
 ![CI](https://github.com/joowonhyun/marketing-dashboard/actions/workflows/ci.yml/badge.svg)
 ```
 
-- [ ] **Step 4: 커밋 및 푸시 (에이전트 실행, 푸시는 사용자 확인 필요)**
+- [x] **Step 4: 커밋 및 푸시 (에이전트 실행, 푸시는 사용자 확인 필요)**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -322,7 +322,7 @@ git commit -m "ci: push마다 테스트/타입체크/린트 자동 실행하는 
 git push origin main
 ```
 
-- [ ] **Step 5: 실제 CI 실행 결과 확인 (에이전트 실행, GitHub Actions 로그 확인)**
+- [x] **Step 5: 실제 CI 실행 결과 확인 (에이전트 실행, GitHub Actions 로그 확인)**
 
 푸시 후 GitHub Actions 탭에서 `server`/`frontend` 두 job이 모두 초록색으로 끝나는지 확인한다. 실패하면 로그를 보고 원인 수정 후 재푸시.
 
@@ -423,5 +423,5 @@ git commit -m "docs: 배포 링크 추가"
 - [ ] 기존 80개 캠페인 / 1,422개 daily_stats가 마이그레이션되어 차트/테이블에 정상 표시.
 - [ ] `POST /admin/reset`(Plan 5)이 배포 환경에서도 정상 동작 — Render Root Directory를 비워둔 설정이 실제로 유효함을 증명.
 - [ ] GitHub Actions 헬스체크 크론(5분 간격)이 정상 실행되어 Render 백엔드가 슬립되지 않음.
-- [ ] CI 워크플로(`server`/`frontend` 두 job)가 push마다 자동 실행되고 통과함.
+- [x] CI 워크플로(`server`/`frontend` 두 job)가 push마다 자동 실행되고 통과함.
 - [ ] README에 배포 링크 반영.
