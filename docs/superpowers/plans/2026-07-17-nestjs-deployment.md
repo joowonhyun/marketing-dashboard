@@ -62,7 +62,7 @@ git commit -m "feat: API_BASE_URL을 env 기반으로 전환(배포 시 Render U
 
 **산출물:** 프로덕션 `DATABASE_URL`(Neon), 스키마 마이그레이션 적용 완료, `db.json` 기반 초기 데이터(캠페인 80개/일별통계 1,422개/admin 1개) 시딩 완료.
 
-- [ ] **Step 1: Neon 프로젝트 생성 (사용자 작업)**
+- [x] **Step 1: Neon 프로젝트 생성 (사용자 작업)**
 
 1. https://neon.tech 에서 가입/로그인 (GitHub 계정 연동 가능).
 2. "New Project" 생성. 이름: `marketing-dashboard`. **Postgres 버전: 16을 명시적으로 선택**(Neon 기본값은 현재 18이지만, 로컬 `docker-compose.yml`이 `postgres:16-alpine`을 쓰고 있어 dev/prod parity를 맞춤 — Neon은 14~18을 모두 지원해 드롭다운에서 고르기만 하면 됨). 리전: 가장 가까운 곳(아시아 리전이 있으면 선택, 없으면 기본값).
@@ -71,7 +71,7 @@ git commit -m "feat: API_BASE_URL을 env 기반으로 전환(배포 시 Render U
 
 이 값을 에이전트에게 전달(또는 아래 Step에서 직접 실행).
 
-- [ ] **Step 2: 로컬에서 프로덕션 DB로 마이그레이션 적용 (에이전트 실행, DATABASE_URL은 사용자가 제공)**
+- [x] **Step 2: 로컬에서 프로덕션 DB로 마이그레이션 적용 (에이전트 실행, DATABASE_URL은 사용자가 제공)**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard/server
@@ -79,14 +79,14 @@ DATABASE_URL="<Neon 연결 문자열>" npx prisma migrate deploy
 ```
 기대 결과: 기존 `server/prisma/migrations/`의 모든 마이그레이션이 순서대로 적용됨(새 마이그레이션 생성 아님, 이미 있는 것만 적용).
 
-- [ ] **Step 3: 로컬에서 프로덕션 DB에 시딩 실행 (에이전트 실행)**
+- [x] **Step 3: 로컬에서 프로덕션 DB에 시딩 실행 (에이전트 실행)**
 
 ```bash
 DATABASE_URL="<Neon 연결 문자열>" ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="<실제 사용할 데모 비밀번호>" npx prisma db seed
 ```
 기대 출력: `Seeded 80 campaigns`, `Seeded 1422 daily stats`, `Seeded admin: admin@example.com`.
 
-- [ ] **Step 4: psql로 직접 카운트 확인 (에이전트 실행)**
+- [x] **Step 4: psql로 직접 카운트 확인 (에이전트 실행)**
 
 ```bash
 psql "<Neon 연결 문자열>" -c \
