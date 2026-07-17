@@ -34,6 +34,7 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+!.env.example
 
 # temp directory
 .temp
@@ -47,3 +48,5 @@ pids
 
 # oh-my-claudecode operational state
 .omc/
+
+/generated/prisma

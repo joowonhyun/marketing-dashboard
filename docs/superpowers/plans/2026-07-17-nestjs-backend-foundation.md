@@ -8,7 +8,7 @@
 
 **Architecture:** `server/` is a new, independent NestJS project living alongside the existing Next.js app in the same repo (no Nx/Turborepo). Local Postgres runs in Docker so the frontend's dev data can't be corrupted by backend experiments. `PrismaService` wraps `PrismaClient` as an injectable NestJS provider; a `/health` endpoint proves the DI wiring and DB connection work end-to-end before any real feature is built.
 
-**Tech Stack:** NestJS 11, Prisma 6, PostgreSQL 16 (Docker), pnpm, Jest (ships with Nest scaffold), bcrypt, ts-node (for the seed script).
+**Tech Stack:** NestJS 11, Prisma 7 (driver adapters, `prisma.config.ts`, client generated to `server/generated/prisma`), `@prisma/adapter-pg`, PostgreSQL 16 (Docker), pnpm, Jest (ships with Nest scaffold), bcrypt, tsx (for the seed script).
 
 ## Global Constraints
 
@@ -164,11 +164,13 @@ git commit -m "feat: scaffold NestJS server project"
 
 Run inside `server/`:
 ```bash
-pnpm add -D prisma
-pnpm add @prisma/client
+pnpm add -D prisma dotenv
+pnpm add @prisma/client @prisma/adapter-pg
 npx prisma init --datasource-provider postgresql
 ```
-Expected: creates `server/prisma/schema.prisma` (default) and `server/.env` with a placeholder `DATABASE_URL`.
+Expected: creates `server/prisma/schema.prisma` (default), `server/prisma.config.ts`, and `server/.env` with a placeholder `DATABASE_URL`. `@prisma/adapter-pg` is Prisma 7's PostgreSQL driver adapter — Prisma 7 dropped the old Rust query engine, so the client now needs an explicit adapter to talk to Postgres.
+
+If `pnpm install` stops with `[ERR_PNPM_IGNORED_BUILDS]` naming a package (e.g. `@prisma/engines`, `prisma`), that's pnpm's build-script approval gate, unrelated to Prisma itself: add the named package(s) to `server/pnpm-workspace.yaml` under both `allowBuilds` (set to `true`) and `onlyBuiltDependencies`, then re-run `pnpm install`.
 
 - [ ] **Step 2: Set the real connection string**
 
@@ -189,14 +191,16 @@ JWT_REFRESH_SECRET="change-me"
 
 - [ ] **Step 3: Replace `server/prisma/schema.prisma` with the real schema**
 
+Prisma 7 changed how the client is generated and configured (verified against `~/Documents/GitHub/nest-core`, the user's own working Prisma 7 + NestJS project, and the official `prisma.io/blog/nestjs-prisma-rest-api` guide): the generator now outputs a plain TS/JS client into a project folder (not `node_modules/@prisma/client`), and the datasource URL is wired through `prisma.config.ts` + a driver adapter instead of `datasource.url = env(...)`.
+
 ```prisma
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Admin {
@@ -258,7 +262,7 @@ Expected: lists `Admin`, `Campaign`, `DailyStat`, and `_prisma_migrations`.
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
-git add server/prisma server/.env.example
+git add server/prisma server/prisma.config.ts server/.env.example server/.gitignore
 git commit -m "feat: add Prisma schema and initial migration"
 ```
 
@@ -318,13 +322,21 @@ Expected: FAIL — `Cannot GET /health` (404), because the controller doesn't ex
 
 - [ ] **Step 3: Write `PrismaService`**
 
+Prisma 7 needs a driver adapter passed into the client constructor (confirmed against `~/Documents/GitHub/nest-core`'s working `PrismaService`, which does the same thing with `PrismaMariaDb` for its MySQL adapter — ours uses `PrismaPg` for Postgres). The generated client itself lives at `server/generated/prisma` (created by `prisma migrate`/`prisma generate` in the next steps, not committed to git), so the import path is relative, not `@prisma/client`.
+
 `server/src/prisma/prisma.service.ts`:
 ```ts
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  constructor() {
+    const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+    super({ adapter });
+  }
+
   async onModuleInit() {
     await this.$connect();
   }
@@ -487,29 +499,43 @@ git commit -m "feat: add normalizeBudget seed utility with tests"
 Run inside `server/`:
 ```bash
 pnpm add bcrypt
-pnpm add -D @types/bcrypt ts-node
+pnpm add -D @types/bcrypt
 ```
+(`tsx`, used to actually run the seed script, was already installed alongside the Prisma driver adapter in Task 3.)
 
 - [ ] **Step 2: Tell Prisma how to run the seed script**
 
-Edit `server/package.json` — add a top-level `"prisma"` key (sibling to `"dependencies"`):
-```json
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
-  }
+Prisma 7 reads the seed command from `prisma.config.ts`, not `package.json#prisma.seed` (that field is ignored now — same story as pnpm ignoring `package.json#pnpm` in Task 2). Edit `server/prisma.config.ts`, adding a `seed` key inside `migrations`:
+```ts
+import 'dotenv/config';
+import { defineConfig } from 'prisma/config';
+
+export default defineConfig({
+  schema: 'prisma/schema.prisma',
+  migrations: {
+    path: 'prisma/migrations',
+    seed: 'tsx prisma/seed.ts',
+  },
+  datasource: {
+    url: process.env['DATABASE_URL'],
+  },
+});
 ```
 
 - [ ] **Step 3: Write the seed script**
 
 `server/prisma/seed.ts`:
 ```ts
-import { PrismaClient, CampaignStatus, Platform } from '@prisma/client';
+import 'dotenv/config';
+import { PrismaClient, CampaignStatus, Platform } from '../generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as bcrypt from 'bcrypt';
 import { normalizeBudget } from '../src/prisma/seed-utils';
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 
 interface RawCampaign {
   id: string;
@@ -649,7 +675,7 @@ Expected: same log output, no duplicate-key errors, counts unchanged (upsert, no
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
-git add server/prisma/seed.ts server/package.json server/pnpm-lock.yaml
+git add server/prisma/seed.ts server/prisma.config.ts server/package.json server/pnpm-lock.yaml
 git commit -m "feat: add db.json seed script with admin bootstrap"
 ```
 

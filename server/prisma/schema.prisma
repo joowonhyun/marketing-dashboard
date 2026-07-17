@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+enum CampaignStatus {
+  active
+  paused
+  ended
+  stopped
+  running
+}
+
+enum Platform {
+  Google
+  Naver
+  Meta
+}
+
+model Campaign {
+  id         String          @id
+  name       String?
+  status     CampaignStatus
+  platform   Platform
+  budget     Int?
+  startDate  DateTime?
+  endDate    DateTime?
+  dailyStats DailyStat[]
+}
+
+model DailyStat {
+  id               String   @id
+  campaignId       String
+  campaign         Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  date             DateTime
+  impressions      Int
+  clicks           Int
+  conversions      Int
+  cost             Int
+  conversionsValue Int
+}
