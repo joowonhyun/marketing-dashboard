@@ -362,15 +362,15 @@ git push origin main
 
 **전제:** Task 3(Render URL), Task 6(Vercel URL) 완료.
 
-- [ ] **Step 1: 로그인 플로우 (에이전트 실행, 브라우저 자동화)**
+- [x] **Step 1: 로그인 플로우 (에이전트 실행, 브라우저 자동화)**
 
 배포된 Vercel URL 접속 → 데모 로그인 버튼(또는 직접 입력)으로 로그인 → 대시보드 진입 확인.
 
-- [ ] **Step 2: 데이터 조회 확인**
+- [x] **Step 2: 데이터 조회 확인**
 
 차트/테이블에 기존 80개 캠페인/1,422개 daily_stats 데이터가 정상 표시되는지 확인(Task 2에서 시딩한 데이터).
 
-- [ ] **Step 3: 캠페인 등록/상태변경/삭제 → Neon 반영 확인**
+- [x] **Step 3: 캠페인 등록/상태변경/삭제 → Neon 반영 확인**
 
 브라우저에서 캠페인 하나 등록 → 상태 변경 → 삭제까지 실행한 뒤, 매번:
 ```bash
@@ -378,11 +378,11 @@ psql "<Neon 연결 문자열>" -c 'SELECT id, name, status FROM "Campaign" WHERE
 ```
 로 실제 Neon Postgres에 반영됐는지 직접 확인.
 
-- [ ] **Step 4: 미인증 리다이렉트 확인**
+- [x] **Step 4: 미인증 리다이렉트 확인**
 
 로그아웃 후 대시보드 경로(`/`) 직접 접근 → `/login`으로 리다이렉트되는지 확인.
 
-- [ ] **Step 5: 수동 리셋 엔드포인트 프로덕션 동작 확인 (Plan 5 연계)**
+- [x] **Step 5: 수동 리셋 엔드포인트 프로덕션 동작 확인 (Plan 5 연계)**
 
 ```bash
 TOKEN=$(curl -s -X POST https://<render-url>/auth/login \
@@ -420,10 +420,10 @@ git commit -m "docs: 배포 링크 추가"
 
 ## 이 계획의 완료 기준 (Definition of Done)
 
-- [ ] `pnpm dev` 없이도 배포된 Vercel URL에서 로그인 → 대시보드 조회 → 캠페인 등록/상태변경/삭제가 실제 Neon Postgres 데이터로 동작.
-- [ ] 로그인하지 않은 상태로 대시보드 경로 접근 시 `/login`으로 리다이렉트.
-- [ ] 기존 80개 캠페인 / 1,422개 daily_stats가 마이그레이션되어 차트/테이블에 정상 표시.
-- [ ] `POST /admin/reset`(Plan 5)이 배포 환경에서도 정상 동작 — Render Root Directory를 비워둔 설정이 실제로 유효함을 증명.
+- [x] `pnpm dev` 없이도 배포된 Vercel URL에서 로그인 → 대시보드 조회 → 캠페인 등록/상태변경/삭제가 실제 Neon Postgres 데이터로 동작.
+- [x] 로그인하지 않은 상태로 대시보드 경로 접근 시 `/login`으로 리다이렉트.
+- [x] 기존 80개 캠페인 / 1,422개 daily_stats가 마이그레이션되어 차트/테이블에 정상 표시.
+- [x] `POST /admin/reset`(Plan 5)이 배포 환경에서도 정상 동작 — Render Root Directory를 비워둔 설정이 실제로 유효함을 증명.
 - [x] GitHub Actions 헬스체크 크론(5분 간격)이 정상 실행되어 Render 백엔드가 슬립되지 않음.
 - [x] CI 워크플로(`server`/`frontend` 두 job)가 push마다 자동 실행되고 통과함.
 - [ ] README에 배포 링크 반영.
