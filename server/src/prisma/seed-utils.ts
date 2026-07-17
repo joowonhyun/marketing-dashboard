@@ -1,3 +1,33 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import type { PrismaClient, CampaignStatus, Platform } from '../../generated/prisma/client';
+
+export interface RawCampaign {
+  id: string;
+  name: string | null;
+  status: string;
+  platform: string;
+  budget: number | string | null;
+  startDate: string | null;
+  endDate: string | null;
+}
+
+export interface RawDailyStat {
+  id: string;
+  campaignId: string;
+  date: string;
+  impressions: number | null;
+  clicks: number | null;
+  conversions: number | null;
+  cost: number | null;
+  conversionsValue: number | null;
+}
+
+export interface SeedDataset {
+  campaigns: RawCampaign[];
+  daily_stats: RawDailyStat[];
+}
+
 export const normalizeBudget = (raw: number | string | null): number | null => {
   if (raw === null) return null;
   if (typeof raw === 'number') return raw;
@@ -54,3 +84,83 @@ export const computeDateShiftDays = (allDates: Date[]): number => {
 
 export const shiftDate = (date: Date, shiftDays: number): Date =>
   new Date(date.getTime() + shiftDays * MS_PER_DAY);
+
+// server/ 기준 한 단계 위(repo 루트)의 db.json을 읽는다.
+export const loadSeedDataset = (): SeedDataset => {
+  const dbJsonPath = path.resolve(process.cwd(), '../db.json');
+  return JSON.parse(fs.readFileSync(dbJsonPath, 'utf-8')) as SeedDataset;
+};
+
+// DB 상태를 db.json 원본과 정확히 일치시킨다: db.json에 없는 캠페인(방문자가
+// 새로 등록한 것)은 삭제하고, db.json에 있는 캠페인/일별 통계는 upsert로
+// 원본 값으로 되돌린다. Admin 테이블은 건드리지 않는다 — 최초 시딩(seed.ts)과
+// 주기적 리셋(ResetService) 양쪽에서 공용으로 사용.
+export const applySeedDataset = async (
+  prisma: PrismaClient,
+  raw: SeedDataset,
+): Promise<{ campaignCount: number; dailyStatCount: number }> => {
+  const originalCampaignIds = raw.campaigns.map((c) => c.id);
+  await prisma.campaign.deleteMany({ where: { id: { notIn: originalCampaignIds } } });
+
+  const allDates = [
+    ...raw.campaigns.flatMap((c) => [c.startDate, c.endDate]),
+    ...raw.daily_stats.map((d) => d.date),
+  ]
+    .filter((d): d is string => Boolean(d))
+    .map((d) => new Date(d));
+  const shiftDays = computeDateShiftDays(allDates);
+
+  const shiftDateString = (d: string | null): Date | null =>
+    d ? shiftDate(new Date(d), shiftDays) : null;
+
+  for (const c of raw.campaigns) {
+    await prisma.campaign.upsert({
+      where: { id: c.id },
+      update: {
+        name: c.name,
+        status: normalizeStatus(c.status) as CampaignStatus,
+        platform: normalizePlatform(c.platform) as Platform,
+        budget: normalizeBudget(c.budget),
+        startDate: shiftDateString(c.startDate),
+        endDate: shiftDateString(c.endDate),
+      },
+      create: {
+        id: c.id,
+        name: c.name,
+        status: normalizeStatus(c.status) as CampaignStatus,
+        platform: normalizePlatform(c.platform) as Platform,
+        budget: normalizeBudget(c.budget),
+        startDate: shiftDateString(c.startDate),
+        endDate: shiftDateString(c.endDate),
+      },
+    });
+  }
+
+  for (const d of raw.daily_stats) {
+    const date = shiftDateString(d.date) as Date;
+    await prisma.dailyStat.upsert({
+      where: { id: d.id },
+      update: {
+        campaign: { connect: { id: d.campaignId } },
+        date,
+        impressions: normalizeNumber(d.impressions),
+        clicks: normalizeNumber(d.clicks),
+        conversions: normalizeNumber(d.conversions),
+        cost: normalizeNumber(d.cost),
+        conversionsValue: normalizeNumber(d.conversionsValue),
+      },
+      create: {
+        id: d.id,
+        campaign: { connect: { id: d.campaignId } },
+        date,
+        impressions: normalizeNumber(d.impressions),
+        clicks: normalizeNumber(d.clicks),
+        conversions: normalizeNumber(d.conversions),
+        cost: normalizeNumber(d.cost),
+        conversionsValue: normalizeNumber(d.conversionsValue),
+      },
+    });
+  }
+
+  return { campaignCount: raw.campaigns.length, dailyStatCount: raw.daily_stats.length };
+};
