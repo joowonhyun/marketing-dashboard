@@ -380,10 +380,10 @@ git commit -m "feat: DailyStats 목록 조회 API 추가"
 
 ## Definition of Done for this plan
 
-- [ ] `GET /campaigns` (with token) → 80 campaigns, dates as `"YYYY-MM-DD"`.
-- [ ] `POST /campaigns` → creates a row with a `CAMP-XXXXXX` id; validation errors return 400 with `{statusCode,message}`.
-- [ ] `PATCH /campaigns/:id` → updates status only.
-- [ ] `DELETE /campaigns/:id` → 204, row gone.
-- [ ] `GET /daily-stats` (with token) → 1,422 rows, dates as `"YYYY-MM-DD"`.
-- [ ] All of the above 401 without a token (global guard, unchanged from Plan 2).
-- [ ] `pnpm test` and `pnpm run test:e2e` still pass.
+- [x] `GET /campaigns` (with token) → 80 campaigns, dates as `"YYYY-MM-DD"`.
+- [x] `POST /campaigns` → creates a row with a `CAMP-XXXXXX` id; validation errors return 400 with `{statusCode,message}`.
+- [x] `PATCH /campaigns/:id` → updates status only, dates stay `"YYYY-MM-DD"` (fixed a bug where this route alone returned full ISO datetimes — see Task 2).
+- [x] `DELETE /campaigns/:id` → 204, row gone.
+- [x] `GET /daily-stats` (with token) → 1,422 rows, dates as `"YYYY-MM-DD"`.
+- [x] All of the above 401 without a token (global guard, unchanged from Plan 2).
+- [x] `pnpm test` and `pnpm run test:e2e` still pass.
