@@ -172,7 +172,7 @@ curl -s https://<render-url>/health
 
 **전제:** Task 3에서 확인한 Render URL.
 
-- [ ] **Step 1: 워크플로 파일 작성 (에이전트 실행, Render URL은 사용자가 제공)**
+- [x] **Step 1: 워크플로 파일 작성 (에이전트 실행, Render URL은 사용자가 제공)**
 
 `.github/workflows/keep-alive.yml`:
 ```yaml
@@ -193,7 +193,7 @@ jobs:
 
 `<render-url>`을 Task 3에서 확인한 실제 Render URL로 치환한다.
 
-- [ ] **Step 2: 커밋 및 푸시 (에이전트 실행)**
+- [x] **Step 2: 커밋 및 푸시 (에이전트 실행)**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -203,7 +203,7 @@ git push origin main
 ```
 `git push`는 원격 저장소에 반영되는 작업이라 실행 전 사용자 확인을 받는다.
 
-- [ ] **Step 3: 수동 실행으로 동작 확인 (사용자 작업)**
+- [x] **Step 3: 수동 실행으로 동작 확인 (사용자 작업)**
 
 GitHub 리포지토리 → Actions 탭 → "Render 백엔드 슬립 방지" workflow → "Run workflow"(`workflow_dispatch`)로 즉시 1회 실행 → 초록색 체크(성공)로 끝나는지 확인. 이후엔 5분마다 자동 실행된다.
 
@@ -424,6 +424,6 @@ git commit -m "docs: 배포 링크 추가"
 - [ ] 로그인하지 않은 상태로 대시보드 경로 접근 시 `/login`으로 리다이렉트.
 - [ ] 기존 80개 캠페인 / 1,422개 daily_stats가 마이그레이션되어 차트/테이블에 정상 표시.
 - [ ] `POST /admin/reset`(Plan 5)이 배포 환경에서도 정상 동작 — Render Root Directory를 비워둔 설정이 실제로 유효함을 증명.
-- [ ] GitHub Actions 헬스체크 크론(5분 간격)이 정상 실행되어 Render 백엔드가 슬립되지 않음.
+- [x] GitHub Actions 헬스체크 크론(5분 간격)이 정상 실행되어 Render 백엔드가 슬립되지 않음.
 - [x] CI 워크플로(`server`/`frontend` 두 job)가 push마다 자동 실행되고 통과함.
 - [ ] README에 배포 링크 반영.
