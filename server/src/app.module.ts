@@ -7,9 +7,10 @@ import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { CampaignsModule } from './campaigns/campaigns.module';
+import { DailyStatsModule } from './daily-stats/daily-stats.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, CampaignsModule],
+  imports: [PrismaModule, AuthModule, CampaignsModule, DailyStatsModule],
   controllers: [AppController, HealthController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
