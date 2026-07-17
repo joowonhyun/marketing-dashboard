@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
+import { UpdateCampaignStatusDto } from './dto/update-campaign-status.dto';
 
 const toDateOnly = (date: Date | null): string | null =>
   date ? date.toISOString().slice(0, 10) : null;
@@ -43,5 +44,22 @@ export class CampaignsService {
       startDate: toDateOnly(campaign.startDate),
       endDate: toDateOnly(campaign.endDate),
     };
+  }
+
+  async updateStatus(id: string, dto: UpdateCampaignStatusDto) {
+    const campaign = await this.prisma.campaign.update({
+      where: { id },
+      data: { status: dto.status },
+    });
+
+    return {
+      ...campaign,
+      startDate: toDateOnly(campaign.startDate),
+      endDate: toDateOnly(campaign.endDate),
+    };
+  }
+
+  async remove(id: string) {
+    await this.prisma.campaign.delete({ where: { id } });
   }
 }
