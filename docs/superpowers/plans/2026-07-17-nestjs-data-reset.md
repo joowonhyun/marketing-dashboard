@@ -30,7 +30,7 @@
 **인터페이스:**
 - 산출물: `loadSeedDataset(): SeedDataset`(repo 루트 `db.json`을 읽어 파싱), `applySeedDataset(prisma: PrismaClient, raw: SeedDataset): Promise<{ campaignCount: number; dailyStatCount: number }>`(db.json에 없는 캠페인 삭제 + campaigns/daily_stats upsert) — Task 2의 `ResetService`가 그대로 소비.
 
-- [ ] **Step 1: `seed-utils.ts`에 타입 + 공용 함수 추가**
+- [x] **Step 1: `seed-utils.ts`에 타입 + 공용 함수 추가**
 
 `server/src/prisma/seed-utils.ts` 최상단에 import와 타입, 파일 하단에 두 함수를 추가(기존 `normalizeBudget`/`normalizeStatus`/`normalizePlatform`/`normalizeNumber`/`computeDateShiftDays`/`shiftDate`는 그대로 유지):
 
@@ -150,7 +150,7 @@ export const applySeedDataset = async (
 };
 ```
 
-- [ ] **Step 2: `seed.ts`를 공용 함수를 쓰도록 단순화**
+- [x] **Step 2: `seed.ts`를 공용 함수를 쓰도록 단순화**
 
 `server/prisma/seed.ts` 전체를 다음으로 교체:
 
@@ -194,12 +194,12 @@ main()
   });
 ```
 
-- [ ] **Step 3: 기존 단위 테스트 통과 확인**
+- [x] **Step 3: 기존 단위 테스트 통과 확인**
 
 `server/` 안에서 실행: `pnpm test`
 기대 결과: `seed-utils.spec.ts`의 `normalizeBudget` 테스트 4개 전부 통과(리팩터링으로 기존 export 이름/시그니처는 안 바꿨으므로 영향 없어야 함).
 
-- [ ] **Step 4: 로컬 DB에 재시딩 실행 + 멱등성/정리 동작 확인**
+- [x] **Step 4: 로컬 DB에 재시딩 실행 + 멱등성/정리 동작 확인**
 
 ```bash
 docker compose up -d
@@ -215,7 +215,7 @@ docker compose exec postgres psql -U dashboard -d marketing_dashboard -c \
 ```
 기대 결과: `campaigns=80`, `daily_stats=1422`.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -238,11 +238,11 @@ git commit -m "refactor: 시딩 로직을 seed-utils의 공용 함수로 추출(
 - 소비: `applySeedDataset`, `loadSeedDataset`(Task 1), `PrismaService`(기존, `@Global()`이라 별도 import 불필요).
 - 산출물: `ResetService.reset(): Promise<{ campaignCount: number; dailyStatCount: number }>`, `POST /admin/reset`(인증 필요, 응답 `{ message, campaignCount, dailyStatCount }`).
 
-- [ ] **Step 1: 패키지 설치**
+- [x] **Step 1: 패키지 설치**
 
 `server/` 안에서 실행: `pnpm add @nestjs/schedule`
 
-- [ ] **Step 2: `ResetService` 작성**
+- [x] **Step 2: `ResetService` 작성**
 
 `server/src/reset/reset.service.ts`:
 ```ts
@@ -274,7 +274,7 @@ export class ResetService {
 }
 ```
 
-- [ ] **Step 3: `ResetController` 작성**
+- [x] **Step 3: `ResetController` 작성**
 
 `server/src/reset/reset.controller.ts`:
 ```ts
@@ -294,7 +294,7 @@ export class ResetController {
 }
 ```
 
-- [ ] **Step 4: `ResetModule` 작성**
+- [x] **Step 4: `ResetModule` 작성**
 
 `server/src/reset/reset.module.ts`:
 ```ts
@@ -309,7 +309,7 @@ import { ResetService } from './reset.service';
 export class ResetModule {}
 ```
 
-- [ ] **Step 5: `AppModule`에 등록**
+- [x] **Step 5: `AppModule`에 등록**
 
 `server/src/app.module.ts` 전체를 다음으로 교체:
 ```ts
@@ -341,7 +341,7 @@ import { ResetModule } from './reset/reset.module';
 export class AppModule {}
 ```
 
-- [ ] **Step 6: curl로 전체 흐름 검증**
+- [x] **Step 6: curl로 전체 흐름 검증**
 
 개발 서버 재시작(`pnpm run start:dev`) 후:
 ```bash
@@ -377,7 +377,7 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3001/campaigns | pyth
 
 **참고(이번 세션에서 검증 안 되는 부분):** `@Cron('0 0 * * *', ...)`이 실제로 매일 00:00(Asia/Seoul)에 발화하는지는 시간을 24시간 이상 기다려야 확인 가능해 이 세션에서는 미검증으로 남긴다 — 6번 curl로 `handleDailyReset()`이 호출하는 것과 동일한 `reset()` 로직이 정상 동작함을 확인했으므로 로직상으로는 문제없음. cron 표현식 자체는 `0 0 * * *`(분 시 일 월 요일 순서로 매일 0시 0분)로 표준 문법에 맞음.
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -395,7 +395,7 @@ git commit -m "feat: 매일 00시 자동 데이터 리셋 + 수동 POST /admin/r
 **인터페이스:**
 - 소비: 없음(문서 전용).
 
-- [ ] **Step 1: README에 안내 추가**
+- [x] **Step 1: README에 안내 추가**
 
 `README.md`에서 데모 계정 안내가 있는 섹션 근처에 다음 내용 추가(정확한 위치는 기존 데모 계정 안내 문단 바로 아래):
 
@@ -404,7 +404,7 @@ git commit -m "feat: 매일 00시 자동 데이터 리셋 + 수동 POST /admin/r
 > 자유롭게 테스트해 보세요 — 매일 00:00(KST)에 원본 데이터로 자동 초기화됩니다.
 ```
 
-- [ ] **Step 2: 커밋**
+- [x] **Step 2: 커밋**
 
 ```bash
 cd /Users/joowon/Documents/GitHub/marketing-dashboard
@@ -416,9 +416,9 @@ git commit -m "docs: 데모 데이터 자동 리셋 안내 추가"
 
 ## 이 계획의 완료 기준 (Definition of Done)
 
-- [ ] `POST /admin/reset` 호출 시 db.json에 없는 캠페인(방문자가 새로 등록한 것)은 삭제되고, 원본 80개 캠페인/1,422개 daily_stats는 원본 값으로 복구됨. `Admin` 테이블은 변경 없음.
-- [ ] 토큰 없이 `POST /admin/reset` 호출 → 401.
-- [ ] `pnpm test` 통과(`seed-utils.spec.ts` 포함), `npx tsc --noEmit` 통과.
-- [ ] `npx prisma db seed`(로컬/최초 배포 시딩용)가 리팩터링 후에도 동일하게 동작 — `Seeded 80 campaigns` / `Seeded 1422 daily stats` / `Seeded admin: ...` 출력.
+- [x] `POST /admin/reset` 호출 시 db.json에 없는 캠페인(방문자가 새로 등록한 것)은 삭제되고, 원본 80개 캠페인/1,422개 daily_stats는 원본 값으로 복구됨. `Admin` 테이블은 변경 없음.
+- [x] 토큰 없이 `POST /admin/reset` 호출 → 401.
+- [x] `pnpm test` 통과(`seed-utils.spec.ts` 포함), `npx tsc --noEmit` 통과.
+- [x] `npx prisma db seed`(로컬/최초 배포 시딩용)가 리팩터링 후에도 동일하게 동작 — `Seeded 80 campaigns` / `Seeded 1422 daily stats` / `Seeded admin: ...` 출력.
 - [ ] `@Cron('0 0 * * *', { timeZone: 'Asia/Seoul' })` 등록됨 — 실제 자정 발화는 미검증(위 Task 2 Step 6 참고), 기저 로직(`reset()`)은 수동 트리거로 검증 완료.
-- [ ] README에 데모 리셋 안내 반영.
+- [x] README에 데모 리셋 안내 반영.
