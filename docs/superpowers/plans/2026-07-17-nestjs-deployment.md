@@ -114,8 +114,10 @@ psql "<Neon 연결 문자열>" -c \
 | Root Directory | **비워둠** (전역 제약사항 참고 — 절대 `server`로 설정하지 말 것) |
 | Runtime | Node |
 | Build Command | `npm install -g pnpm && cd server && pnpm install --frozen-lockfile && npx prisma generate && pnpm run build` |
-| Start Command | `cd server && node dist/main` |
+| Start Command | `cd server && pnpm run start:prod` |
 | Instance Type | Free |
+
+**첫 배포 시도에서 발견/수정된 버그:** `generated/prisma/`가 `src/` 바깥(server root)에 있어서 `nest build`의 암묵적 `rootDir`이 `server/` 전체로 잡히고, 그 결과 `dist/main.js`가 아니라 `dist/src/main.js`가 만들어진다(로컬에서 `pnpm run build` 실행 전까진 아무도 몰랐던 기존 버그 — `start:dev`는 `dist/`를 거치지 않아 안 드러났음). `tsconfig.build.json`에 `rootDir: "./src"`를 강제하면 `generated/prisma` import가 rootDir 밖이라 컴파일 에러가 나서 이 방법은 불가능. 대신 `server/package.json`의 `start:prod` 스크립트를 `node dist/src/main`으로 고쳤고, Start Command도 하드코딩된 경로 대신 `pnpm run start:prod`를 쓰도록 위 표를 수정함(빌드 경로가 바뀌어도 Render 설정을 다시 안 건드려도 되게).
 
 - [ ] **Step 2: 환경변수 설정 (사용자 작업)**
 
