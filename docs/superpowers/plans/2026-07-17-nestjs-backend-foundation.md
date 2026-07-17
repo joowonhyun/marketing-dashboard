@@ -703,79 +703,19 @@ git commit -m "feat: add db.json seed script with admin bootstrap"
 
 ---
 
-### Task 7: Extend frontend `CampaignStatus` to match the real data
+### Task 7: ~~Extend frontend `CampaignStatus`~~ — dropped, not needed
 
-**Files:**
-- Modify: `shared/types/index.ts:4`
-- Modify: `shared/utils/status.ts:3-22`
-- Modify: `shared/constants/options.ts:4-8`
+**Superseded during Task 6.** This task assumed `db.json`'s `stopped`/`running` status values (and messy `platform` values like `네이버`/`facebook`/`Facebook`) needed new frontend types. They don't: `shared/utils/dataset.ts` already has `normalizeStatus` (`running`→`active`, `stopped`→`ended`) and `normalizePlatform` (keyword-matches messy strings to `Google`/`Naver`/`Meta`) — the existing frontend was already designed to collapse this exact messy data down to the original 3 statuses / 3 platforms. Widening `CampaignStatus` would have fought that established convention and left `STATUS_CONFIG`'s new `stopped`/`running` entries as dead code (nothing produces those values after normalization).
 
-**Interfaces:**
-- Consumes: nothing new.
-- Produces: `CampaignStatus` type now includes `"stopped" | "running"`, consumed by every file already importing it (`STATUS_CONFIG`, `STATUS_OPTIONS`, filter store, table components) — this task's whole point is making the TypeScript compiler force those call sites to handle the two extra values instead of silently rendering `null`/blank badges for the 2 real campaigns (`db.json`) that have them.
-
-- [ ] **Step 1: Widen the type**
-
-`shared/types/index.ts:4` — change:
-```ts
-export type CampaignStatus = "active" | "paused" | "ended";
-```
-to:
-```ts
-export type CampaignStatus = "active" | "paused" | "ended" | "stopped" | "running";
-```
-
-- [ ] **Step 2: Try to typecheck (expect it to fail — this is the point)**
-
-Run from repo root: `pnpm exec tsc --noEmit`
-Expected: FAIL — error in `shared/utils/status.ts` because `STATUS_CONFIG` is typed `Record<CampaignStatus, ...>` and is now missing the `stopped`/`running` keys. This is TypeScript catching the exact bug the design doc warned about.
-
-- [ ] **Step 3: Add the missing `STATUS_CONFIG` entries**
-
-`shared/utils/status.ts` — add after the existing `ended` entry (before the closing `};` of `STATUS_CONFIG`):
-```ts
-  stopped: {
-    label: "중지됨",
-    className:
-      "whitespace-nowrap px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold",
-  },
-  running: {
-    label: "실행중",
-    className:
-      "whitespace-nowrap px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-semibold",
-  },
-```
-
-- [ ] **Step 4: Add the missing `STATUS_OPTIONS` entries (so the filter dropdown can filter by them too)**
-
-`shared/constants/options.ts` — add to the `STATUS_OPTIONS` array, after `{ label: "종료", value: "ended" }`:
-```ts
-  { label: "중지됨", value: "stopped" },
-  { label: "실행중", value: "running" },
-```
-
-- [ ] **Step 5: Typecheck and lint again**
-
-Run: `pnpm exec tsc --noEmit`
-Expected: PASS, no errors.
-
-Run: `pnpm lint`
-Expected: PASS, no errors.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add shared/types/index.ts shared/utils/status.ts shared/constants/options.ts
-git commit -m "feat: support stopped/running campaign statuses in frontend types"
-```
+Task 6's seed script mirrors the same normalization (`normalizeStatus`/`normalizePlatform`/`normalizeNumber` in `server/src/prisma/seed-utils.ts`) so Postgres only ever stores the 3 canonical statuses and 3 canonical platforms — no frontend changes required. `shared/types/index.ts`'s `CampaignStatus` stays `"active" | "paused" | "ended"`, unchanged.
 
 ---
 
 ## Definition of Done for this plan
 
-- [ ] `docker compose ps` shows a healthy `postgres` container.
-- [ ] `cd server && pnpm run start:dev` boots without errors; `curl http://localhost:3001/health` returns `{"status":"ok"}`.
-- [ ] `pnpm test` and `pnpm run test:e2e` (inside `server/`) both pass.
-- [ ] Postgres has 80 campaigns, 1,422 daily stats, 1 admin (verified via `psql` count query).
-- [ ] Root `pnpm exec tsc --noEmit` and `pnpm lint` both pass with the widened `CampaignStatus`.
-- [ ] Nothing from Plan 2 (auth) or Plan 3 (campaigns/daily-stats routes) exists yet — `server/src` only has `app.*`, `prisma/`, `health/`.
+- [x] `docker compose ps` shows a healthy `postgres` container.
+- [x] `cd server && pnpm run start:dev` boots without errors; `curl http://localhost:3001/health` returns `{"status":"ok"}`.
+- [x] `pnpm test` and `pnpm run test:e2e` (inside `server/`) both pass.
+- [x] Postgres has 80 campaigns, 1,422 daily stats, 1 admin (verified via `psql` count query).
+- [x] Frontend untouched — `CampaignStatus` stays 3 values (Task 7 dropped, see above).
+- [x] Nothing from Plan 2 (auth) or Plan 3 (campaigns/daily-stats routes) exists yet — `server/src` only has `app.*`, `prisma/`, `health/`.
