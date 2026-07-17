@@ -2,12 +2,17 @@
 
 import { useActionState } from "react";
 import { loginAction } from "@/features/auth/services/actions";
+import ThemeToggle from "@/shared/components/layout/ThemeToggle";
 
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(loginAction, null);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+    <div className="relative min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+
       <form
         action={formAction}
         className="w-full max-w-sm space-y-4 rounded-lg border border-slate-200 dark:border-slate-800 p-6"

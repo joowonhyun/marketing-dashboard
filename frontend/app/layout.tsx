@@ -20,15 +20,9 @@ export const metadata: Metadata = {
 
 interface RootLayoutProps {
   children: React.ReactNode;
-  charts: React.ReactNode;
-  table: React.ReactNode;
 }
 
-export default function RootLayout({
-  children,
-  charts,
-  table,
-}: RootLayoutProps) {
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html
       lang="ko"
@@ -37,13 +31,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-          <main className="container mx-auto px-4 py-8 space-y-8 flex-1 w-full max-w-7xl">
-            {children}
-
-            <div className="w-full">{charts}</div>
-
-            <div className="w-full">{table}</div>
-          </main>
+          {children}
         </ThemeProvider>
       </body>
     </html>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTheme } from "next-themes";
 import {
   LineChart,
   Line,
@@ -28,6 +29,8 @@ export default function DailyTrendChart({
 }: Props) {
   const { dailyStats } = useFilteredData(allCampaigns, allDailyStats);
   const { showImpressions, showClicks, toggleMetric } = useMetricToggle();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   const chartData = useMemo(
     () => aggregateDailyStats(dailyStats),
@@ -95,10 +98,15 @@ export default function DailyTrendChart({
               />
               <Tooltip
                 contentStyle={{
+                  backgroundColor: isDark
+                    ? CHART_CONFIG.COMMON.TOOLTIP_BG_DARK
+                    : CHART_CONFIG.COMMON.TOOLTIP_BG,
+                  color: isDark
+                    ? CHART_CONFIG.COMMON.TOOLTIP_TEXT_DARK
+                    : CHART_CONFIG.COMMON.TOOLTIP_TEXT,
                   borderRadius: CHART_CONFIG.COMMON.TOOLTIP_BORDER_RADIUS,
                   border: "none",
                   fontSize: CHART_CONFIG.COMMON.TOOLTIP_FONT_SIZE,
-                  color: "#000",
                 }}
                 cursor={{
                   stroke: "#cbd5e1",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTheme } from "next-themes";
 import { PieChart, Pie, Tooltip, ResponsiveContainer } from "recharts";
 import { Platform, Campaign, DailyStat } from "@/shared/types";
 import { useFilterStore } from "@/features/filter/store/useFilterStore";
@@ -25,6 +26,8 @@ export default function PlatformDonutChart({
   const { campaigns } = useFilteredData(allCampaigns, allDailyStats);
   const { metric, setMetric, chartData } = usePlatformDonutData(campaigns);
   const { platforms, setPlatforms } = useFilterStore();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   const handleSliceClick = (data: { name?: string }) => {
     const platformName = data.name as Platform;
@@ -88,6 +91,12 @@ export default function PlatformDonutChart({
                   return new Intl.NumberFormat("ko-KR").format(numValue || 0);
                 }}
                 contentStyle={{
+                  backgroundColor: isDark
+                    ? CHART_CONFIG.COMMON.TOOLTIP_BG_DARK
+                    : CHART_CONFIG.COMMON.TOOLTIP_BG,
+                  color: isDark
+                    ? CHART_CONFIG.COMMON.TOOLTIP_TEXT_DARK
+                    : CHART_CONFIG.COMMON.TOOLTIP_TEXT,
                   borderRadius: CHART_CONFIG.COMMON.TOOLTIP_BORDER_RADIUS,
                   border: `1px solid ${CHART_CONFIG.COMMON.GRID_COLOR}`,
                   fontSize: CHART_CONFIG.COMMON.TOOLTIP_FONT_SIZE,

@@ -7,7 +7,10 @@ export const CHART_CONFIG = {
     AXIS_FONT_SIZE: 12,
     AXIS_COLOR: "#64748b",
     GRID_COLOR: "#e2e8f0",
-    TOOLTIP_BG: "#fff",
+    TOOLTIP_BG: "#ffffff",
+    TOOLTIP_BG_DARK: "#1e293b", // slate-800
+    TOOLTIP_TEXT: "#0f172a", // slate-900
+    TOOLTIP_TEXT_DARK: "#f1f5f9", // slate-100
     TOOLTIP_BORDER_RADIUS: "8px",
     TOOLTIP_FONT_SIZE: "12px",
   },
