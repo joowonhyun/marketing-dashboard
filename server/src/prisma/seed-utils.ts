@@ -38,3 +38,19 @@ export const normalizeNumber = (raw: number | null | undefined): number => {
   if (raw === null || raw === undefined) return 0;
   return raw;
 };
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+// db.json은 특정 연도에 고정된 목업 날짜를 담고 있어 시간이 지나면
+// 대시보드 기본 필터("이번 달")에서 데이터가 하나도 안 보이게 된다.
+// 전체 날짜 범위의 중간 지점을 시딩 시점의 "오늘"로 옮기고, 나머지 날짜는
+// 같은 간격만큼 평행이동시켜서 시딩할 때마다 데이터가 항상 "오늘" 근처에 오도록 한다.
+export const computeDateShiftDays = (allDates: Date[]): number => {
+  const times = allDates.map((d) => d.getTime());
+  const midpoint = (Math.min(...times) + Math.max(...times)) / 2;
+  const today = Date.now();
+  return Math.round((today - midpoint) / MS_PER_DAY);
+};
+
+export const shiftDate = (date: Date, shiftDays: number): Date =>
+  new Date(date.getTime() + shiftDays * MS_PER_DAY);

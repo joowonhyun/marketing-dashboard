@@ -9,6 +9,8 @@ import {
   normalizeStatus,
   normalizePlatform,
   normalizeNumber,
+  computeDateShiftDays,
+  shiftDate,
 } from '../src/prisma/seed-utils';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
@@ -42,6 +44,18 @@ const main = async () => {
     daily_stats: RawDailyStat[];
   };
 
+  const allDates = [
+    ...raw.campaigns.flatMap((c) => [c.startDate, c.endDate]),
+    ...raw.daily_stats.map((d) => d.date),
+  ]
+    .filter((d): d is string => Boolean(d))
+    .map((d) => new Date(d));
+  const shiftDays = computeDateShiftDays(allDates);
+  console.log(`날짜를 오늘 기준으로 ${shiftDays}일만큼 이동합니다.`);
+
+  const shiftDateString = (d: string | null): Date | null =>
+    d ? shiftDate(new Date(d), shiftDays) : null;
+
   for (const c of raw.campaigns) {
     await prisma.campaign.upsert({
       where: { id: c.id },
@@ -50,8 +64,8 @@ const main = async () => {
         status: normalizeStatus(c.status) as CampaignStatus,
         platform: normalizePlatform(c.platform) as Platform,
         budget: normalizeBudget(c.budget),
-        startDate: c.startDate ? new Date(c.startDate) : null,
-        endDate: c.endDate ? new Date(c.endDate) : null,
+        startDate: shiftDateString(c.startDate),
+        endDate: shiftDateString(c.endDate),
       },
       create: {
         id: c.id,
@@ -59,19 +73,20 @@ const main = async () => {
         status: normalizeStatus(c.status) as CampaignStatus,
         platform: normalizePlatform(c.platform) as Platform,
         budget: normalizeBudget(c.budget),
-        startDate: c.startDate ? new Date(c.startDate) : null,
-        endDate: c.endDate ? new Date(c.endDate) : null,
+        startDate: shiftDateString(c.startDate),
+        endDate: shiftDateString(c.endDate),
       },
     });
   }
   console.log(`Seeded ${raw.campaigns.length} campaigns`);
 
   for (const d of raw.daily_stats) {
+    const date = shiftDateString(d.date) as Date;
     await prisma.dailyStat.upsert({
       where: { id: d.id },
       update: {
         campaign: { connect: { id: d.campaignId } },
-        date: new Date(d.date),
+        date,
         impressions: normalizeNumber(d.impressions),
         clicks: normalizeNumber(d.clicks),
         conversions: normalizeNumber(d.conversions),
@@ -81,7 +96,7 @@ const main = async () => {
       create: {
         id: d.id,
         campaign: { connect: { id: d.campaignId } },
-        date: new Date(d.date),
+        date,
         impressions: normalizeNumber(d.impressions),
         clicks: normalizeNumber(d.clicks),
         conversions: normalizeNumber(d.conversions),
