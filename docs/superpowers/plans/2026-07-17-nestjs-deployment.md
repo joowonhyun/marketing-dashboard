@@ -334,13 +334,13 @@ git push origin main
 
 **산출물:** `https://<프로젝트명>.vercel.app` 형태의 프론트엔드 URL.
 
-- [ ] **Step 1: Vercel 프로젝트 생성 (사용자 작업)**
+- [x] **Step 1: Vercel 프로젝트 생성 (사용자 작업)**
 
 1. https://vercel.com 가입/로그인, GitHub 연동 후 `joowonhyun/marketing-dashboard` 리포지토리 선택해 "Import".
 2. **Root Directory를 `frontend`로 설정**(Edit 버튼) — 이건 Vercel 쪽 설정이라 Render의 리스크(Task 3 참고)와 무관, `frontend/`는 `db.json` 등 바깥 파일에 의존하지 않으므로 안전.
 3. Framework Preset: Next.js(자동 감지됨, 그대로 둠).
 
-- [ ] **Step 2: 환경변수 설정 (사용자 작업)**
+- [x] **Step 2: 환경변수 설정 (사용자 작업)**
 
 | 키 | 값 |
 |---|---|
@@ -348,11 +348,11 @@ git push origin main
 | `NEXT_PUBLIC_DEMO_ADMIN_EMAIL` | `admin@example.com` |
 | `NEXT_PUBLIC_DEMO_ADMIN_PASSWORD` | Task 2/3에서 쓴 것과 동일한 `ADMIN_PASSWORD` |
 
-- [ ] **Step 3: 배포 실행 (사용자 작업)**
+- [x] **Step 3: 배포 실행 (사용자 작업)**
 
 "Deploy" 클릭. 빌드 로그에서 `next build` 성공 및 배포 완료 확인.
 
-- [ ] **Step 4: 배포 URL 접속 확인 (에이전트 실행, URL은 사용자가 제공)**
+- [x] **Step 4: 배포 URL 접속 확인 (에이전트 실행, URL은 사용자가 제공)**
 
 배포된 Vercel URL에 미로그인 상태로 접속 → `/login`으로 리다이렉트되는지 확인(브라우저 자동화 또는 `curl -sI <url>`의 리다이렉트 응답으로 확인).
 
