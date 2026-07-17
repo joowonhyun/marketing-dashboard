@@ -391,20 +391,14 @@ curl -s -X POST https://<render-url>/admin/reset -H "Authorization: Bearer $TOKE
 **파일:**
 - 수정: `README.md`
 
-- [ ] **Step 1: 배포 링크 추가 (에이전트 실행)**
+- [x] **Step 1: 배포 링크 추가 (사용자가 README 직접 개편하며 이미 반영함)**
 
 README 상단(제목 바로 아래) 또는 "프로젝트 개요" 섹션에 배포 URL 뱃지/링크 추가:
 ```markdown
 🔗 **[배포된 데모 보러가기](<Vercel URL>)**
 ```
 
-- [ ] **Step 2: 커밋 (에이전트 실행)**
-
-```bash
-cd /Users/joowon/Documents/GitHub/marketing-dashboard
-git add README.md
-git commit -m "docs: 배포 링크 추가"
-```
+- [x] **Step 2: 커밋** — 사용자의 README 개편 커밋(`Change project URL in README` 등)에 이미 포함됨, 별도 커밋 불필요.
 
 ---
 
@@ -416,4 +410,4 @@ git commit -m "docs: 배포 링크 추가"
 - [x] `POST /admin/reset`(Plan 5)이 배포 환경에서도 정상 동작 — Render Root Directory를 비워둔 설정이 실제로 유효함을 증명.
 - [x] UptimeRobot(5분 간격)이 정상 실행되어 Render 백엔드가 슬립되지 않음 — 첫 배포 직후 8분간 502(부팅 안정화 창)를 겪었으나 이후 안정적으로 Up 유지.
 - [x] CI 워크플로(`server`/`frontend` 두 job)가 push마다 자동 실행되고 통과함.
-- [ ] README에 배포 링크 반영.
+- [x] README에 배포 링크 반영.
