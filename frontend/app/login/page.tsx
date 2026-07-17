@@ -1,8 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
-import { loginAction } from "@/features/auth/services/actions";
+import { loginAction, demoLoginAction } from "@/features/auth/services/actions";
 import ThemeToggle from "@/shared/components/layout/ThemeToggle";
+
+const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEMO_ADMIN_EMAIL;
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_ADMIN_PASSWORD;
 
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(loginAction, null);
@@ -20,6 +23,28 @@ export default function LoginPage() {
         <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
           관리자 로그인
         </h1>
+
+        {DEMO_EMAIL && DEMO_PASSWORD && (
+          <>
+            <button
+              type="submit"
+              formAction={demoLoginAction}
+              formNoValidate
+              className="w-full rounded bg-blue-600 hover:bg-blue-700 text-white py-2 text-sm font-medium cursor-pointer"
+            >
+              데모 계정으로 로그인
+            </button>
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+              {DEMO_EMAIL} / {DEMO_PASSWORD}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+              <span className="text-xs text-slate-400">또는 직접 입력</span>
+              <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+            </div>
+          </>
+        )}
 
         <div className="space-y-1">
           <label htmlFor="email" className="text-sm text-slate-600 dark:text-slate-400">

@@ -12,13 +12,7 @@ import {
 
 type LoginState = { success: true } | { success: false; message: string };
 
-export async function loginAction(
-  _prevState: LoginState | null,
-  formData: FormData,
-): Promise<LoginState> {
-  const email = formData.get("email");
-  const password = formData.get("password");
-
+async function performLogin(email: string, password: string): Promise<LoginState> {
   const res = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -58,6 +52,21 @@ export async function loginAction(
   });
 
   redirect("/");
+}
+
+export async function loginAction(
+  _prevState: LoginState | null,
+  formData: FormData,
+): Promise<LoginState> {
+  return performLogin(String(formData.get("email")), String(formData.get("password")));
+}
+
+// 포트폴리오 데모용 원클릭 로그인 — 리뷰어가 계정 정보를 몰라도 바로 체험할 수 있게 함.
+export async function demoLoginAction(): Promise<void> {
+  await performLogin(
+    process.env.NEXT_PUBLIC_DEMO_ADMIN_EMAIL ?? "",
+    process.env.NEXT_PUBLIC_DEMO_ADMIN_PASSWORD ?? "",
+  );
 }
 
 export async function logoutAction(): Promise<void> {
