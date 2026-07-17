@@ -181,7 +181,7 @@ git commit -m "ci: keep-alive를 GitHub Actions에서 UptimeRobot으로 전환(s
 git push origin main
 ```
 
-- [ ] **Step 2: UptimeRobot 가입 및 모니터 등록 (사용자 작업)**
+- [x] **Step 2: UptimeRobot 가입 및 모니터 등록 (사용자 작업)**
 
 1. https://uptimerobot.com 무료 가입(신용카드 불필요).
 2. "+ Add New Monitor" 클릭, 다음 값으로 설정:
@@ -193,7 +193,7 @@ git push origin main
 | URL | `https://<render-url>/health` |
 | Monitoring Interval | 5 minutes |
 
-- [ ] **Step 3: 동작 확인 (에이전트 실행)**
+- [x] **Step 3: 동작 확인 (에이전트 실행)**
 
 UptimeRobot 대시보드에 모니터가 "Up" 상태로 뜨는지 확인 후, 5~10분 뒤 Render `/health`에 curl을 날려 응답 시간이 콜드스타트 없이 빠른지(수초 이내) 확인한다.
 
@@ -414,6 +414,6 @@ git commit -m "docs: 배포 링크 추가"
 - [x] 로그인하지 않은 상태로 대시보드 경로 접근 시 `/login`으로 리다이렉트.
 - [x] 기존 80개 캠페인 / 1,422개 daily_stats가 마이그레이션되어 차트/테이블에 정상 표시.
 - [x] `POST /admin/reset`(Plan 5)이 배포 환경에서도 정상 동작 — Render Root Directory를 비워둔 설정이 실제로 유효함을 증명.
-- [x] GitHub Actions 헬스체크 크론(5분 간격)이 정상 실행되어 Render 백엔드가 슬립되지 않음.
+- [x] UptimeRobot(5분 간격)이 정상 실행되어 Render 백엔드가 슬립되지 않음 — 첫 배포 직후 8분간 502(부팅 안정화 창)를 겪었으나 이후 안정적으로 Up 유지.
 - [x] CI 워크플로(`server`/`frontend` 두 job)가 push마다 자동 실행되고 통과함.
 - [ ] README에 배포 링크 반영.
