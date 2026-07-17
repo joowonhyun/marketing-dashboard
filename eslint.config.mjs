@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // server/는 독립 프로젝트라 자체 eslint.config.mjs를 씀.
+    "server/**",
   ]),
 ]);
 
