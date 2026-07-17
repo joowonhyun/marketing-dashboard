@@ -19,8 +19,6 @@ enum CampaignStatus {
   active
   paused
   ended
-  stopped
-  running
 }
 
 enum Platform {

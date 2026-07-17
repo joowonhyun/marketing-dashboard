@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "CampaignStatus" AS ENUM ('active', 'paused', 'ended', 'stopped', 'running');
+CREATE TYPE "CampaignStatus" AS ENUM ('active', 'paused', 'ended');
 
 -- CreateEnum
 CREATE TYPE "Platform" AS ENUM ('Google', 'Naver', 'Meta');
