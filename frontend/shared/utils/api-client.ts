@@ -52,7 +52,7 @@ const buildRequest = (
 
 /**
  * RSC(Server Component)에서 사용. RSC는 쿠키를 쓸 수 없으므로 갱신을 시도하지
- * 않는다 — accessToken 최신 상태 보장은 middleware의 책임.
+ * 않는다 — accessToken 최신 상태 보장은 proxy의 책임.
  */
 export const serverFetch = async <T>(
   path: string,
