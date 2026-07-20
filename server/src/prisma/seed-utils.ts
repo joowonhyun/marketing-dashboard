@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { PrismaClient } from '../../generated/prisma/client';
+import type { PrismaClient } from '../generated/prisma/client';
 
 export interface RawCampaign {
   id: string;

@@ -49,4 +49,4 @@ pids
 # oh-my-claudecode operational state
 .omc/
 
-/generated/prisma
+/src/generated/prisma
