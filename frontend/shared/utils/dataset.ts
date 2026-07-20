@@ -9,7 +9,7 @@ import {
 export const normalizePlatform = (platform: string): Platform => {
   const lower = platform.toLowerCase();
 
-  // Find matching platform from config
+  // 설정에서 일치하는 플랫폼 찾기
   const matched = PLATFORM_NAMES.find((key) =>
     PLATFORM_CONFIG[key].matchKeywords.some((keyword) =>
       lower.includes(keyword),

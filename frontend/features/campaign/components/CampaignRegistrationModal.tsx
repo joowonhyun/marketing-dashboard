@@ -41,7 +41,7 @@ export default function CampaignRegistrationModal() {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Name */}
+          {/* 캠페인명 */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-semibold">
               캠페인명 <span className="text-red-500">*</span>
@@ -57,7 +57,7 @@ export default function CampaignRegistrationModal() {
             )}
           </div>
 
-          {/* Platform */}
+          {/* 광고 매체 */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-semibold">
               광고 매체 <span className="text-red-500">*</span>
@@ -79,7 +79,7 @@ export default function CampaignRegistrationModal() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Budget */}
+            {/* 예산 */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold">
                 예산 (원) <span className="text-red-500">*</span>
@@ -106,7 +106,7 @@ export default function CampaignRegistrationModal() {
               )}
             </div>
 
-            {/* Cost */}
+            {/* 집행 금액 */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold">
                 집행 금액 (원) <span className="text-red-500">*</span>
@@ -135,7 +135,7 @@ export default function CampaignRegistrationModal() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Start Date */}
+            {/* 시작일 */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold">
                 시작일 <span className="text-red-500">*</span>
@@ -150,7 +150,7 @@ export default function CampaignRegistrationModal() {
               )}
             </div>
 
-            {/* End Date */}
+            {/* 종료일 */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold">
                 종료일 <span className="text-red-500">*</span>

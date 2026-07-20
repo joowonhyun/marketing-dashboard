@@ -14,7 +14,7 @@ const { ITEMS_PER_PAGE } = PAGINATION;
 export const useCampaignTable = (campaigns: NormalizedCampaign[]) => {
   const router = useRouter();
 
-  // ── State ──────────────────────────────────────────────
+  // ── 상태 ──────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState("");
   const [sortCol, setSortCol] = useState<SortCol>(null);
   const [sortDesc, setSortDesc] = useState(true);
@@ -29,7 +29,7 @@ export const useCampaignTable = (campaigns: NormalizedCampaign[]) => {
     setCurrentPage(1);
   }
 
-  // ── Derived data ────────────────────────────────────────
+  // ── 파생 데이터 ────────────────────────────────────────
   const filtered = useMemo(
     () =>
       campaigns.filter((c) =>
@@ -59,7 +59,7 @@ export const useCampaignTable = (campaigns: NormalizedCampaign[]) => {
     currentPage * ITEMS_PER_PAGE,
   );
 
-  // ── Handlers ────────────────────────────────────────────
+  // ── 핸들러 ────────────────────────────────────────────
   const handleSearch = (val: string) => {
     setSearchTerm(val);
     setCurrentPage(1);
@@ -121,7 +121,7 @@ export const useCampaignTable = (campaigns: NormalizedCampaign[]) => {
     router.refresh();
   };
 
-  // ── Return ──────────────────────────────────────────────
+  // ── 반환값 ──────────────────────────────────────────────
   return {
     searchTerm,
     sortCol,

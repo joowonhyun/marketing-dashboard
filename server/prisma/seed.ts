@@ -10,13 +10,13 @@ const prisma = new PrismaClient({ adapter });
 const main = async () => {
   const raw = loadSeedDataset();
   const { campaignCount, dailyStatCount } = await applySeedDataset(prisma, raw);
-  console.log(`Seeded ${campaignCount} campaigns`);
-  console.log(`Seeded ${dailyStatCount} daily stats`);
+  console.log(`캠페인 ${campaignCount}개 시딩 완료`);
+  console.log(`일별 통계 ${dailyStatCount}개 시딩 완료`);
 
   const adminEmail = process.env.ADMIN_EMAIL;
   const adminPassword = process.env.ADMIN_PASSWORD;
   if (!adminEmail || !adminPassword) {
-    throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD must be set in server/.env before seeding');
+    throw new Error('시딩 전에 server/.env에 ADMIN_EMAIL과 ADMIN_PASSWORD를 설정해야 합니다.');
   }
   const passwordHash = await bcrypt.hash(adminPassword, 10);
   await prisma.admin.upsert({
@@ -24,7 +24,7 @@ const main = async () => {
     update: { passwordHash },
     create: { email: adminEmail, passwordHash },
   });
-  console.log(`Seeded admin: ${adminEmail}`);
+  console.log(`관리자 계정 시딩 완료: ${adminEmail}`);
 };
 
 main()

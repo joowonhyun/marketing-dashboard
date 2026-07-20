@@ -8,11 +8,11 @@ import { RankingMetric } from "@/features/dashboard/types/chart";
 export const getMetricColor = (metric: RankingMetric): string => {
   switch (metric) {
     case "roas":
-      return "#f59e0b"; // Orange
+      return "#f59e0b"; // 주황색
     case "ctr":
-      return "#06b6d4"; // Cyan
+      return "#06b6d4"; // 청록색
     case "cpc":
-      return "#8b5cf6"; // Purple
+      return "#8b5cf6"; // 보라색
     default:
       return "#f59e0b";
   }

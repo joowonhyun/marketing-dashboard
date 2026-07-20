@@ -21,7 +21,7 @@ export interface NormalizedCampaign {
   budget: number;
   startDate: string;
   endDate: string;
-  // Computed metrics
+  // 계산된 지표
   totalCost: number;
   impressions: number;
   clicks: number;

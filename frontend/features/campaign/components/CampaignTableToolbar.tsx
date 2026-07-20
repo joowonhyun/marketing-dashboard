@@ -29,7 +29,7 @@ export default function CampaignTableToolbar({
       <h3 className="font-semibold text-lg">캠페인 관리</h3>
 
       <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-        {/* Search */}
+        {/* 검색 */}
         <div
           className={`relative w-full md:${UI_DIMENSIONS.TOOLBAR.SEARCH_INPUT_WIDTH}`}
         >
@@ -66,7 +66,7 @@ export default function CampaignTableToolbar({
           className={`hidden md:block w-px ${UI_DIMENSIONS.TOOLBAR.DIVIDER_HEIGHT} bg-slate-200 dark:bg-slate-700`}
         />
 
-        {/* Bulk Actions */}
+        {/* 일괄 작업 */}
         <div className="flex items-center gap-2 w-full md:w-auto">
           <select
             value={bulkStatus}

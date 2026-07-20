@@ -17,7 +17,7 @@ export default function ThemeToggle() {
   );
 
   if (!mounted) {
-    return <div className={UI_DIMENSIONS.THEME_TOGGLE.SIZE} />; // skeleton width
+    return <div className={UI_DIMENSIONS.THEME_TOGGLE.SIZE} />; // 스켈레톤 너비
   }
 
   return (

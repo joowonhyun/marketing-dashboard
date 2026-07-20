@@ -9,13 +9,13 @@ interface ErrorPageProps {
 
 export default function Error({ error, reset }: ErrorPageProps) {
   useEffect(() => {
-    console.error("[Dashboard Error Boundary]", error);
+    console.error("[대시보드 에러 바운더리]", error);
   }, [error]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
       <div className="max-w-md w-full text-center space-y-6">
-        {/* Icon */}
+        {/* 아이콘 */}
         <div className="mx-auto w-20 h-20 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
           <svg
             className="w-10 h-10 text-red-500"
@@ -32,7 +32,7 @@ export default function Error({ error, reset }: ErrorPageProps) {
           </svg>
         </div>
 
-        {/* Text */}
+        {/* 텍스트 */}
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
             데이터를 불러오지 못했습니다
@@ -44,7 +44,7 @@ export default function Error({ error, reset }: ErrorPageProps) {
           </p>
         </div>
 
-        {/* Error detail (dev only) */}
+        {/* 에러 상세 (개발 환경 전용) */}
         {process.env.NODE_ENV === "development" && error.message && (
           <div className="text-left bg-slate-100 dark:bg-slate-800 rounded-lg px-4 py-3">
             <p className="text-xs font-mono text-red-600 dark:text-red-400 break-all">
@@ -58,7 +58,7 @@ export default function Error({ error, reset }: ErrorPageProps) {
           </div>
         )}
 
-        {/* Actions */}
+        {/* 액션 버튼 */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={reset}
