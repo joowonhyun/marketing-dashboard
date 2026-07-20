@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { NormalizedCampaign } from "@/shared/types";
 import { RankingMetric } from "@/features/dashboard/types/chart";
+import { CHART_CONFIG } from "@/shared/constants/chart";
 
 /**
  * 캠페인 목록에서 특정 지표(Metric) 기준 상위 3개를 추출하여
@@ -28,8 +29,12 @@ export const useTopRanking = (campaigns: NormalizedCampaign[]) => {
     }
 
     // 상위 3개만 추출하여 차트 라이브러리(Recharts) 규격으로 매핑
+    const { NAME_MAX_LENGTH } = CHART_CONFIG.TOP_RANKING;
     return sortedList.slice(0, 3).map((c) => ({
-      name: c.name.length > 10 ? c.name.substring(0, 10) + "..." : c.name,
+      name:
+        c.name.length > NAME_MAX_LENGTH
+          ? c.name.substring(0, NAME_MAX_LENGTH) + "..."
+          : c.name,
       fullName: c.name,
       value: Number((c[metric] || 0).toFixed(2)),
       platform: c.platform,

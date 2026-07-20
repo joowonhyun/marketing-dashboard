@@ -21,6 +21,9 @@ export const CHART_CONFIG = {
     STROKE_WIDTH: 2,
     DOT_RADIUS: 3,
     ACTIVE_DOT_RADIUS: 5,
+    // ResponsiveContainer가 실제 크기를 관측하기 전(첫 렌더)에 쓰는 초기값.
+    // 지정하지 않으면 -1/-1로 렌더되어 recharts가 콘솔 경고를 띄운다.
+    INITIAL_DIMENSION: { width: 520, height: 250 },
   },
 
   // 플랫폼별 도넛 차트 (Pie Chart)
@@ -29,14 +32,19 @@ export const CHART_CONFIG = {
     OUTER_RADIUS: 70,
     PADDING_ANGLE: 2,
     MIN_HEIGHT: "250px",
+    INITIAL_DIMENSION: { width: 220, height: 210 },
   },
 
   // 우수 캠페인 랭킹 차트 (Bar Chart)
   TOP_RANKING: {
     MARGIN: { top: 10, right: 30, left: 10, bottom: 0 },
-    Y_AXIS_WIDTH: 70,
+    Y_AXIS_WIDTH: 96,
     BAR_SIZE: 24,
     BAR_RADIUS: [0, 4, 4, 0] as [number, number, number, number],
     AXIS_FONT_SIZE: 11,
+    // 캠페인명 표시 최대 글자 수. Y_AXIS_WIDTH(96px)·폰트(11px) 기준
+    // 두 줄로 줄바꿈되지 않고 한 줄 말줄임으로 들어가는 길이.
+    NAME_MAX_LENGTH: 7,
+    INITIAL_DIMENSION: { width: 220, height: 150 },
   },
 } as const;

@@ -61,7 +61,11 @@ export default function PlatformDonutChart({
 
       <div className="flex-1 w-full relative group [&_path.recharts-sector]:hover:opacity-80 [&_path.recharts-sector]:transition-opacity">
         {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            initialDimension={CHART_CONFIG.PLATFORM_DONUT.INITIAL_DIMENSION}
+          >
             <PieChart>
               <Pie
                 data={chartData}

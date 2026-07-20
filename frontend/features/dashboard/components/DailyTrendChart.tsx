@@ -59,7 +59,11 @@ export default function DailyTrendChart({
 
       <div className="flex-1 w-full min-h-[250px]">
         {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            initialDimension={CHART_CONFIG.DAILY_TREND.INITIAL_DIMENSION}
+          >
             <LineChart
               data={chartData}
               margin={CHART_CONFIG.DAILY_TREND.MARGIN}
