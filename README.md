@@ -16,7 +16,8 @@ https://www.marketing-dashboard.site
 3.  [아키텍처](#-아키텍처)
 4.  [주요 기능 및 UI](#-주요-기능-및-ui)
 5.  [설계 하이라이트](#-설계-하이라이트)
-6.  [폴더 구조](#-폴더-구조)
+6.  [트러블슈팅](#-트러블슈팅)
+7.  [폴더 구조](#-폴더-구조)
 
 ---
 
@@ -117,6 +118,49 @@ Recharts는 번들 크기가 크고 초기 렌더 연산량이 많습니다. `@c
 ### 매직 넘버 중앙 관리
 
 컴포넌트 내부에 흩어져 있던 하드코딩 수치(예산 한도, 페이지 크기, 차트 색상 등)를 `shared/constants/`로 모아, 정책이 바뀌어도 한 곳만 수정하면 되도록 구조화했습니다.
+
+---
+
+## 🔧 트러블슈팅
+
+### 빌드된 서버 파일 위치가 예상과 달랐습니다
+
+`nest build`를 돌리면 원래 `server/dist/main.js`가 나오고, `node dist/main`으로 실행하면 됩니다. Render에 처음 배포하고 그대로 실행했더니 `Cannot find module`. 서버가 안 켜졌습니다.
+
+`dist/`를 열어보니 `main.js`가 `dist/main.js`가 아니라 `dist/src/main.js`에 가 있었습니다. `prisma/schema.prisma`를 보니 이런 설정이 있었습니다.
+
+```
+output = "../generated/prisma"
+```
+
+이 경로는 `schema.prisma` 파일이 있는 위치(`server/prisma/`) 기준입니다. `..`로 한 칸 올라가면 `server/`, 거기서 `generated/prisma`로 들어가니 최종 위치는 `server/generated/prisma`.
+
+```
+server/
+├── prisma/
+│   └── schema.prisma   ← output 설정이 여기 있음
+├── src/                 ← 앱 코드
+└── generated/           ← output이 실제로 가리키는 곳
+    └── prisma/
+```
+
+`src/` 안이 아니라 `src/` 옆에 생기는 구조였습니다. (Prisma 7의 새 제너레이터가 `node_modules` 대신 이 자리를 권장해서 그렇게 잡혀 있었습니다.)
+
+TypeScript는 `rootDir`을 안 정해주면 컴파일 대상 파일들의 공통 상위 폴더를 알아서 잡습니다. `src/` 바깥에 `generated/prisma/`랑 시딩 설정 파일 `prisma.config.ts`가 있다 보니 기준 폴더가 `src/`가 아니라 `server/` 전체로 넓어져 있었고, 빌드 결과물도 `src/` 구조를 그대로 따라간 `dist/src/main.js`에 만들어지고 있었던 겁니다. 로컬은 빌드 없이 바로 실행하는 `pnpm start:dev`만 써서 몰랐습니다.
+
+처음엔 실행 스크립트를 `node dist/src/main`으로 고쳐서 넘어갔는데, 원인은 안 건드리고 증상만 우회한 거라 찜찜했습니다. 그래서 Prisma 출력 경로를 `src/generated/prisma`로 옮기고, `prisma.config.ts`와 `prisma/` 폴더는 `tsconfig.build.json`의 `exclude`에 넣었습니다(시딩은 `tsx prisma/seed.ts`로 따로 돌아가니 빌드에 안 껴도 됩니다). 이제 tsc가 보는 파일이 전부 `src/` 안에만 있어서 `rootDir`이 자연스럽게 `src/`로 잡히고, `dist/main.js`가 제자리에 생깁니다. 실행 스크립트도 `node dist/main`으로 되돌렸습니다.
+
+### Render의 "Root Directory" 설정을 `server/`로 잡으면 안 되는 이유
+
+Render엔 "이 저장소에서 어느 폴더를 기준으로 빌드·실행할지" 정하는 Root Directory 옵션이 있습니다. `frontend/`와 `server/`가 한 저장소에 같이 있는 구조라, 백엔드 배포할 땐 당연히 `server/`로 잡아야 할 것 같았습니다.
+
+그런데 걸리는 게 하나 있었습니다. 매일 자정 캠페인 데이터를 리셋하는 기능이 참조하는 원본 파일 `db.json`이 `server/` 안이 아니라 저장소 맨 위에 있습니다. Root Directory를 `server/`로 잡으면 Render는 그 폴더만 가져오니, 바깥에 있는 `db.json`은 서버 입장에서 없는 파일이 됩니다. 배포는 멀쩡히 성공해서 겉으로는 문제가 없어 보이지만, 리셋 기능을 실제로 실행하는 순간 파일을 못 찾아 조용히 죽었을 상황이었습니다.
+
+직접 겪은 건 아니고, 배포 전에 Render 문서를 읽다가 미리 발견했습니다. Root Directory는 비워서 저장소 전체를 가져오게 하고, 대신 Build/Start Command 맨 앞에 `cd server &&`를 붙여 그 안에서 명령어가 돌게 했습니다.
+
+### GitHub Actions `schedule`이 생각보다 안 돌았습니다
+
+Render 무료 티어는 15분 넘게 요청이 없으면 슬립 상태로 들어가고, 다시 깨어나는 데 30~60초가 걸립니다. 포트폴리오를 처음 열어본 사람이 로딩만 1분 가까이 붙잡고 있으면 곤란하겠다 싶어서, 5분마다 헬스체크 핑을 보내는 GitHub Actions 워크플로(`schedule: */5 * * * *`)를 먼저 붙여봤습니다. 그런데 실제로는 최초 푸시 후 80분 동안 단 한 번도 안 돌았고, 재푸시해서 겨우 한 번 돈 다음엔 또 29분 동안 잠잠했습니다. 이 정도면 GitHub의 schedule 트리거를 믿고 갈 수는 없겠다 싶어서 워크플로는 지우고, 대신 외부 uptime 모니터링 서비스(UptimeRobot)가 5분마다 직접 헬스체크 핑을 쏘도록 바꿨습니다. 계산해보니 이러면 한 달에 720~744시간 정도 깨어있는 셈인데, 마침 Render 무료 티어 한도(750시간)는 안 넘어서 이 방식으로 정리했습니다.
 
 ---
 
