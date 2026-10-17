@@ -23,7 +23,7 @@ https://www.marketing-dashboard.site
 
 ## 🎯 프로젝트 개요
 
-원래 `json-server` 목업으로 시작한 프론트엔드 토이프로젝트를 백엔드(NestJS + PostgreSQL)와 JWT 인증을 갖춘 풀스택 프로젝트로 확장했습니다. 브라우저는 NestJS API를 절대 직접 호출하지 않고, Next.js 서버가 유일한 클라이언트가 되는 BFF 구조를 채택해 JWT가 브라우저 JavaScript에 전혀 노출되지 않도록 설계했습니다.
+마케터가 확인하는 성과 지표(일별 추이·매체별 비중·상위 캠페인)와 캠페인 등록·일괄 상태 변경·삭제를 하나로 묶은 업무용 어드민입니다. 프론트엔드부터 API·DB·배포·운영까지 혼자 맡은 풀스택 개인 프로젝트로, 브라우저가 NestJS API를 직접 호출하지 않고 Next.js 서버만 백엔드를 호출하는 BFF 구조를 채택해 JWT를 브라우저 JavaScript가 읽을 수 없도록 설계했습니다. 배포 후 운영 중 겪은 장애는 원인까지 추적해 재발 방지 테스트로 고정했습니다([트러블슈팅](#-트러블슈팅) 참고).
 
 - 다크/라이트 모드 완전 지원 (차트 툴팁까지 테마 인식)
 - httpOnly 쿠키 기반 JWT 인증 — accessToken 15분 / refreshToken 7일, 세션 만료 시 자동 갱신
@@ -95,7 +95,7 @@ https://www.marketing-dashboard.site
 
 ## 💡 설계 하이라이트
 
-### 1. httpOnly 쿠키 + BFF — XSS로부터 완전 격리된 토큰 저장
+### 1. httpOnly 쿠키 + BFF — JavaScript로 읽을 수 없는 토큰 저장
 
 JWT를 `localStorage`나 일반 쿠키가 아닌 httpOnly 쿠키로만 다뤄서 JavaScript가 토큰에 접근할 방법 자체를 없앴습니다. 이걸 가능하게 하려고 프론트엔드가 API 클라이언트를 컨텍스트별로 분리했습니다: RSC(`serverFetch`)는 쿠키를 읽기만 하고, Server Action(`actionFetch`)은 쿠키를 쓸 수 있으므로 401을 받으면 그 자리에서 refreshToken으로 갱신 후 재시도합니다. Next.js의 RSC는 쿠키 쓰기가 금지되어 있다는 제약을 그대로 반영한 설계입니다.
 
