@@ -6,6 +6,7 @@ import {
   normalizeStatus,
   normalizeNumber,
   normalizeDate,
+  overlapsPeriod,
 } from "@/shared/utils/dataset";
 import { calculateCTR, calculateCPC, calculateROAS } from "@/shared/utils/calc";
 
@@ -26,22 +27,19 @@ export const useFilteredData = (
   allCampaigns: Campaign[],
   allDailyStats: DailyStat[],
 ) => {
-  const {
-    startDate: rawStartDate,
-    endDate: rawEndDate,
-    statuses,
-    platforms,
-  } = useFilterStore();
-  const startDate = normalizeDate(rawStartDate);
-  const endDate = normalizeDate(rawEndDate);
+  // 필터 날짜는 <input type="date">에서 오므로 항상 YYYY-MM-DD다.
+  const { startDate, endDate, statuses, platforms } = useFilterStore();
 
   return useMemo(() => {
     // 1. 캠페인을 날짜 범위(Date Range) 교집합으로 필터링
-    const dateFiltered = allCampaigns.filter((c) => {
-      const campStart = normalizeDate(c.startDate);
-      const campEnd = normalizeDate(c.endDate);
-      return campStart <= endDate && campEnd >= startDate;
-    });
+    const dateFiltered = allCampaigns.filter((c) =>
+      overlapsPeriod(
+        normalizeDate(c.startDate),
+        normalizeDate(c.endDate),
+        startDate,
+        endDate,
+      ),
+    );
 
     // 2. 캠페인을 매체(Platform) 및 상태(Status)로 추가 필터링
     const platformFiltered =

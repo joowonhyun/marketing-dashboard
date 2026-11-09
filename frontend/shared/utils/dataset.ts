@@ -37,13 +37,30 @@ export const normalizeNumber = (
   return isNaN(parsed) ? 0 : parsed;
 };
 
-export const normalizeDate = (dateStr: string | null | undefined): string => {
-  if (!dateStr) return "2026-01-01"; // 기본 날짜 (Fallback)
+// 날짜가 없으면 null을 그대로 둔다. 가짜 날짜로 채우면 종료일 없는(진행 중) 캠페인이
+// 과거에 끝난 캠페인이 되어 기간 필터에서 사라진다.
+export const normalizeDate = (
+  dateStr: string | null | undefined,
+): string | null => {
+  if (!dateStr) return null;
   // 슬래시나 점 형식의 문자열을 대시(-)로 통일하고 공백 제거 (예: 2026. 04. 12 -> 2026-04-12)
   let cleaned = dateStr.replace(/[\/\.]/g, "-").replace(/\s/g, "");
   if (cleaned.endsWith("-")) cleaned = cleaned.slice(0, -1);
   return cleaned;
 };
+
+/**
+ * 캠페인 집행 기간이 [from, to]와 겹치는지 판정합니다.
+ * 종료일 null = 진행 중(끝이 열림), 시작일 null = 시작을 알 수 없음(앞이 열림).
+ */
+export const overlapsPeriod = (
+  campStart: string | null,
+  campEnd: string | null,
+  from: string,
+  to: string,
+): boolean =>
+  (campStart === null || campStart <= to) &&
+  (campEnd === null || campEnd >= from);
 
 /**
  * 현재 달의 1일과 말일을 YYYY-MM-DD 형식의 객체로 반환합니다.

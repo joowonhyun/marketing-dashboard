@@ -44,6 +44,9 @@ export const useCampaignTable = (campaigns: NormalizedCampaign[]) => {
     return [...filtered].sort((a, b) => {
       const valA = a[key];
       const valB = b[key];
+      // 시작일 없는 캠페인은 방향과 무관하게 맨 뒤로 보낸다.
+      if (valA === null || valB === null)
+        return valA === valB ? 0 : valA === null ? 1 : -1;
       if (typeof valA === "string" && typeof valB === "string")
         return sortDesc ? valB.localeCompare(valA) : valA.localeCompare(valB);
       if (typeof valA === "number" && typeof valB === "number")

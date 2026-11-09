@@ -34,7 +34,7 @@ export default function CampaignTableRow({
         {c.platform}
       </Table.Cell>
       <Table.Cell className="text-slate-500 text-xs whitespace-nowrap text-center">
-        {`${c.startDate} ~ ${c.endDate}`}
+        {`${c.startDate ?? "-"} ~ ${c.endDate ?? "진행중"}`}
       </Table.Cell>
       <Table.Cell className="text-right font-medium whitespace-nowrap">
         {formatNumber(c.totalCost, true)}

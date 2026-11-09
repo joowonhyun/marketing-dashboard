@@ -19,8 +19,8 @@ export interface NormalizedCampaign {
   status: CampaignStatus;
   platform: Platform;
   budget: number;
-  startDate: string;
-  endDate: string;
+  startDate: string | null; // 원본에 없으면 null (가짜 날짜로 채우지 않는다)
+  endDate: string | null; // null = 종료일 없음(진행 중)
   // 계산된 지표
   totalCost: number;
   impressions: number;
