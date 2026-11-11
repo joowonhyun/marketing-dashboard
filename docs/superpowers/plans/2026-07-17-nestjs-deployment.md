@@ -98,7 +98,7 @@ psql "<Neon 연결 문자열>" -c \
 
 ### Task 3: Render에 `server/` 배포
 
-**산출물:** `https://<서비스명>.onrender.com` 형태의 백엔드 URL, `/health`가 200 응답. 실제 URL은 `https://marketing-dashboard-api-5k4k.onrender.com` — 서비스명이 이미 쓰이고 있어 Render가 `-5k4k`를 붙였으므로, 이 문서의 `<render-url>`은 이 값으로 읽는다.
+**산출물:** `https://<서비스명>.onrender.com` 형태의 백엔드 URL, `/health`가 200 응답. 실제 URL은 `https://marketing-dashboard-api-5k4k.onrender.com` (서비스명 뒤에 `-5k4k`가 붙음). 이 문서의 `<render-url>`은 이 값으로 읽는다.
 
 - [x] **Step 1: Render 웹 서비스 생성 (사용자 작업)**
 
