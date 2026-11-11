@@ -101,7 +101,7 @@ JWT를 `localStorage`나 일반 쿠키가 아닌 httpOnly 쿠키로만 다뤄서
 
 ### 2. 프론트/백엔드 이중 유효성 검사
 
-`features/campaign/schemas/campaignFormSchema.ts`의 zod 규칙(이름 2~100자, 예산 100~10억원, 종료일 > 시작일)을 NestJS DTO의 class-validator 데코레이터에도 그대로 반영했습니다. 클라이언트 검증을 우회해 직접 API를 호출해도 동일한 규칙이 서버에서 다시 강제됩니다.
+`features/campaign/schemas/campaignFormSchema.ts`의 zod 규칙(이름 2~100자, 예산 100~10억원, 집행 금액 0~10억원이면서 예산 이하, 종료일 > 시작일)을 NestJS DTO의 class-validator 데코레이터에도 그대로 반영했습니다. 클라이언트 검증을 우회해 직접 API를 호출해도 동일한 규칙이 서버에서 다시 강제됩니다.
 
 ### 3. 지저분한 실데이터에 대한 정규화
 
@@ -218,6 +218,17 @@ UptimeRobot 모니터 URL을 `/health/live`로 바꾸면 Render는 계속 깨어
 - `normalizeDate`는 빈 날짜를 `null`로 돌려주고, 기간 판정은 `overlapsPeriod` 한 곳에서 **null을 열린 끝으로** 다룸 (종료일 null = 진행 중, 시작일 null = 앞이 열림)
 - 테이블은 `2026-03-04 ~ 진행중`처럼 표시하고, 집행기간 정렬에서 시작일 없는 행은 맨 뒤로
 - `__tests__/dataset.test.ts`에 두 캠페인을 그대로 옮긴 케이스로 고정
+
+### 7. 입력·검증까지 받던 「집행 금액」이 어디에도 저장되지 않았습니다
+
+등록 모달은 집행 금액을 필수로 받아 범위와 「예산 이하」까지 검증했지만, 정작 전송 payload에서 빠져 있었습니다. 서버 DTO와 `Campaign` 모델에도 필드가 없었고, `ValidationPipe({ whitelist: true })`라 보냈더라도 조용히 버려졌을 겁니다. 사용자가 검증을 통과시킨 값이 그냥 사라진 셈입니다.
+
+- `Campaign.plannedCost Int?` 추가. 표의 「총 집행금액」(`DailyStat.cost` 합산, 실제 집행)과 헷갈리지 않게 이름을 `cost`가 아닌 `plannedCost`(계획 집행 금액)로 지음
+- **nullable로 둠**: 기존 행과 매일 리셋에 쓰는 `db.json`에 이 값이 없어서, NOT NULL이면 리셋이 깨짐
+- DTO에 범위 검증, 서비스에 `plannedCost > budget` 거절을 넣어 프론트 규칙을 서버에서도 강제. 서버 `CAMPAIGN_LIMITS`에 빠져 있던 `COST_MIN`/`COST_MAX`도 프론트와 맞춤
+- `server/test/campaigns.e2e-spec.ts`에 예산 초과·음수 400 케이스 추가 (서비스 검사를 일부러 빼면 실패하는 것까지 확인)
+
+**배포 순서 사고:** Render는 `main` 푸시마다 자동 배포하는데, 마이그레이션은 로컬에서 수동으로 돌리는 구조입니다. 코드가 먼저 나가자 Prisma가 아직 없는 `plannedCost` 컬럼을 조회하면서 **목록 조회까지 전부 500**이 났고, 운영 DB에 `migrate deploy`를 적용하고 나서야 복구됐습니다. 스키마를 바꿀 때는 **(nullable·추가형) 마이그레이션을 운영 DB에 먼저 적용하고, 그다음에 코드를 푸시**합니다.
 
 ---
 
