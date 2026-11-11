@@ -98,7 +98,7 @@ psql "<Neon 연결 문자열>" -c \
 
 ### Task 3: Render에 `server/` 배포
 
-**산출물:** `https://<서비스명>.onrender.com` 형태의 백엔드 URL, `/health`가 200 응답.
+**산출물:** `https://<서비스명>.onrender.com` 형태의 백엔드 URL, `/health`가 200 응답. 실제 URL은 `https://marketing-dashboard-api-5k4k.onrender.com` — 서비스명이 이미 쓰이고 있어 Render가 `-5k4k`를 붙였으므로, 이 문서의 `<render-url>`은 이 값으로 읽는다.
 
 - [x] **Step 1: Render 웹 서비스 생성 (사용자 작업)**
 
@@ -334,7 +334,7 @@ git push origin main
 
 | 키 | 값 |
 |---|---|
-| `API_BASE_URL` | Task 3에서 확인한 Render URL(예: `https://marketing-dashboard-api.onrender.com`) |
+| `API_BASE_URL` | Task 3에서 확인한 Render URL(실제: `https://marketing-dashboard-api-5k4k.onrender.com`) |
 | `NEXT_PUBLIC_DEMO_ADMIN_EMAIL` | `admin@example.com` |
 | `NEXT_PUBLIC_DEMO_ADMIN_PASSWORD` | Task 2/3에서 쓴 것과 동일한 `ADMIN_PASSWORD` |
 
