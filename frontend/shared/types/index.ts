@@ -9,6 +9,7 @@ export interface Campaign {
   status: CampaignStatus;
   platform: Platform;
   budget: number | null | string;
+  plannedCost?: number | null;
   startDate: string | null;
   endDate: string | null;
 }

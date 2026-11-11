@@ -59,6 +59,7 @@ export const useCampaignForm = () => {
       name: data.name,
       platform: data.platform as Platform,
       budget: parseInt(data.budget, DEFAULT_RADIX),
+      plannedCost: parseInt(data.cost, DEFAULT_RADIX),
       status: "active",
       startDate: data.startDate,
       endDate: data.endDate,

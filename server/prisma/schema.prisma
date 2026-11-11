@@ -33,6 +33,7 @@ model Campaign {
   status     CampaignStatus
   platform   Platform
   budget     Int?
+  plannedCost Int?
   startDate  DateTime?
   endDate    DateTime?
   dailyStats DailyStat[]

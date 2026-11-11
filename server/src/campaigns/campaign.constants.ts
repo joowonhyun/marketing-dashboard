@@ -4,6 +4,8 @@ export const CAMPAIGN_LIMITS = {
   NAME_MAX_LENGTH: 100,
   BUDGET_MIN: 100,
   BUDGET_MAX: 1000000000,
+  COST_MIN: 0,
+  COST_MAX: 1000000000,
 } as const;
 
 // DTO마다 복사하지 않도록 여기 한 곳에만 정의한다.

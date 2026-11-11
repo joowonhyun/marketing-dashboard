@@ -27,6 +27,15 @@ export class CreateCampaignDto {
   })
   budget: number;
 
+  @IsInt({ message: '집행 금액은 정수여야 합니다.' })
+  @Min(CAMPAIGN_LIMITS.COST_MIN, {
+    message: `집행 금액은 ${CAMPAIGN_LIMITS.COST_MIN.toLocaleString()}원 이상이어야 합니다.`,
+  })
+  @Max(CAMPAIGN_LIMITS.COST_MAX, {
+    message: `집행 금액은 ${CAMPAIGN_LIMITS.COST_MAX.toLocaleString()}원 이하여야 합니다.`,
+  })
+  plannedCost: number;
+
   @IsDateString({}, { message: '시작일은 올바른 날짜 형식이어야 합니다.' })
   startDate: string;
 

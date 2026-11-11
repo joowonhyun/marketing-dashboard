@@ -32,6 +32,9 @@ export class CampaignsService {
     if (new Date(dto.endDate) <= new Date(dto.startDate)) {
       throw new BadRequestException('종료일은 시작일 이후여야 합니다.');
     }
+    if (dto.plannedCost > dto.budget) {
+      throw new BadRequestException('집행 금액은 예산을 초과할 수 없습니다.');
+    }
 
     const id = `CAMP-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     const campaign = await this.prisma.campaign.create({
@@ -41,6 +44,7 @@ export class CampaignsService {
         platform: dto.platform,
         status: dto.status,
         budget: dto.budget,
+        plannedCost: dto.plannedCost,
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
       },
